@@ -4,9 +4,9 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const errorHandler = require('./middleware/errorHandler');
-
+const chatRoutes = require('./routes/chatRoutes');
 const codeExecutionRoutes = require('./routes/codeExecutionRoutes');
-
+const mongoose = require('mongoose');
 
 const app = express();
 
@@ -18,8 +18,14 @@ app.use(express.json());
 // Routes
 
 app.use('/api/code', codeExecutionRoutes);
-
-
+app.use('/api/chat', chatRoutes);
+app.get('/api/database-status', (req, res) => {
+    const dbStatus = {
+      connected: mongoose.connection.readyState === 1,
+      state: ['disconnected', 'connected', 'connecting', 'disconnecting'][mongoose.connection.readyState]
+    };
+    res.json(dbStatus);
+  });
 // Error handling
 app.use(errorHandler);
 
