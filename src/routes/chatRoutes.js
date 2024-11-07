@@ -3,8 +3,10 @@ const express = require('express');
 const chatController = require('../controllers/chatController');
 const checkApiKey = require('../middleware/apiKeyCheck');
 const router = express.Router();
-
+const authMiddleware = require('../middleware/authMiddleware'); // Import the auth middleware
 // Route for sending chat
+
+router.use(authMiddleware); 
 router.get('/test', (req, res) => {
     res.json({ message: 'Chat routes are working' });
   });

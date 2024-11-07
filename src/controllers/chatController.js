@@ -1,17 +1,18 @@
 // src/controllers/chatController.js
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const Chat = require('../models/chatModels');
+const model = require('../utils/genAIInstance');
 const apiResponse = require('../utils/apiResponse');
 
 // Initialize Google Generative AI
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY); // Make sure to add this to your .env file
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
 const handleGeminiError = require('../utils/geminiErrorHandler');
 
 // Function to handle chat requests
 exports.sendChat = async (req, res, next) => {
   try {
     const { message } = req.body;
+    const userId = req.userId; // This will now be available from the authMiddleware
     let aiResponse = null;
 
     try {
@@ -22,9 +23,10 @@ exports.sendChat = async (req, res, next) => {
       const errorMessage = handleGeminiError(apiError);
       return res.json(apiResponse.error(errorMessage));
     }
-
+    
     // Save the chat to MongoDB
     const chat = new Chat({
+      userId: userId,
       userMessage: message,
       aiResponse: aiResponse,
     });
@@ -33,12 +35,7 @@ exports.sendChat = async (req, res, next) => {
 
     // Send response back to frontend
     res.json(apiResponse.success({ 
-      response: aiResponse,
-      savedMessage: {
-        userMessage: message,
-        aiResponse: aiResponse,
-        timestamp: chat.timestamp
-      }
+      savedMessage: aiResponse,
     }));
 
   } catch (error) {
@@ -48,9 +45,11 @@ exports.sendChat = async (req, res, next) => {
 };
 
 // Function to fetch past conversations
-exports.getPastConversations = async (req, res) => {
+exports.getPastConversations = async (req, res,next) => {
   try {
-    const chats = await Chat.find()
+    const userId = req.userId;
+
+    const chats = await Chat.find({ userId: userId })
       .sort({ timestamp: -1 })
       .limit(5)
       .select('userMessage aiResponse timestamp');
