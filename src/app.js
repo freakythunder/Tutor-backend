@@ -11,6 +11,12 @@ const mongoose = require('mongoose');
 
 const app = express();
 
+const corsOptions = {
+  origin: 'https://platoeducation-git-v1bikash-bikashs-projects-a2dc20d4.vercel.app/',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true,
+};
+app.use(cors(corsOptions));
 app.use(cors());
 app.use(helmet());
 app.use(morgan('combined'));
