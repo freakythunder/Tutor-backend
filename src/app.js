@@ -8,6 +8,7 @@ const chatRoutes = require('./routes/chatRoutes');
 const codeExecutionRoutes = require('./routes/codeExecutionRoutes');
 const authRoutes = require('./routes/authRoutes'); // Import the new auth routes
 const mongoose = require('mongoose');
+const testRoutes = require('./routes/testRoutes'); // Import the test routes
 
 const app = express();
 
@@ -26,6 +27,7 @@ app.use(express.json());
 app.use('/auth', authRoutes); // Add authentication routes
 app.use('/code', codeExecutionRoutes);
 app.use('/chat', chatRoutes);
+app.use('/test', testRoutes); // Access test routes without authentication
 app.get('/database-status', (req, res) => {
     const dbStatus = {
       connected: mongoose.connection.readyState === 1,
