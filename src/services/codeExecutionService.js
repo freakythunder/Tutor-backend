@@ -1,30 +1,107 @@
+// src/services/codeExecutionService.js
 const { exec } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
-// Function to execute Python code
-exports.execute = async (code) => {
+exports.execute = async (code, language = 'auto') => {
+  // Detect language if not specified
+  if (language === 'auto') {
+    language = this.detectLanguage(code);
+  }
+
   return new Promise((resolve, reject) => {
-    // Save the code to a temporary Python file
-    const tempFilePath = path.join(__dirname, 'temp.py');
+    // Generate a unique filename to prevent conflicts
+    const uniqueId = crypto.randomBytes(16).toString('hex');
+    let tempFilePath;
+    let executionCommand;
+
+    // Determine file extension and execution command based on language
+    switch (language.toLowerCase()) {
+      case 'python':
+        tempFilePath = path.join(__dirname, `temp_${uniqueId}.py`);
+        executionCommand = `python ${tempFilePath}`;
+        break;
+      case 'javascript':
+      case 'js':
+        tempFilePath = path.join(__dirname, `temp_${uniqueId}.js`);
+        executionCommand = `node ${tempFilePath}`;
+        break;
+      default:
+        return reject(new Error(`Unsupported language: ${language}`));
+    }
+
+    // Write the code to the temporary file
     fs.writeFile(tempFilePath, code, (err) => {
       if (err) {
-        return reject(new Error('Failed to save the Python code to a file.'));
+        return reject(new Error(`Failed to save the ${language} code to a file.`));
       }
 
-      // Run the Python script using exec
-      exec(`python ${tempFilePath}`, (error, stdout, stderr) => {
-        // Delete the temporary file
-        fs.unlinkSync(tempFilePath);
+      // Configure execution with timeout and resource limits
+      const executionOptions = {
+        timeout: 10000, // 10 seconds max execution time
+        maxBuffer: 1024 * 1024, // 1MB max output
+      };
 
-        if (error) {
-          // If there is an error, return the error message
-          return reject(new Error(`Execution error: ${stderr || error.message}`));
+      // Run the script
+      exec(executionCommand, executionOptions, (error, stdout, stderr) => {
+        // Always try to delete the temporary file
+        try {
+          fs.unlinkSync(tempFilePath);
+        } catch (cleanupError) {
+          console.error('Failed to delete temporary file:', cleanupError);
         }
 
-        // Return the standard output (the result of the code execution)
-        resolve({ output: stdout });
+        if (error) {
+          // Detailed error handling
+          const errorMessage = stderr || error.message;
+          return reject(new Error(`Execution error: ${errorMessage}`));
+        }
+
+        // Return the standard output
+        resolve({ 
+          output: stdout.trim(),
+          language: language.toLowerCase()
+        });
       });
     });
   });
+};
+
+// Language detection method
+exports.detectLanguage = (code) => {
+  // Trim whitespace and remove leading comments
+  const cleanedCode = code.trim().replace(/^\/\/.*\n/gm, '').replace(/^#.*\n/gm, '');
+
+  // Python-specific indicators
+  const pythonIndicators = [
+    /^\s*def\s+\w+\(/,  // Function definition
+    /^\s*class\s+\w+:/,  // Class definition
+    /^\s*import\s+\w+/,  // Import statement
+    /^\s*from\s+\w+\s+import\s+\w+/,  // From import
+    /^\s*print\(/,  // Print function
+  ];
+
+  // JavaScript-specific indicators
+  const jsIndicators = [
+    /^\s*const\s+\w+\s*=/,  // Const declaration
+    /^\s*let\s+\w+\s*=/,    // Let declaration
+    /^\s*var\s+\w+\s*=/,    // Var declaration
+    /^\s*function\s+\w+\(/,  // Function declaration
+    /^\s*console\.log\(/,   // Console log
+    /^\s*=>\s*{/,           // Arrow function
+  ];
+
+  // Check Python indicators first
+  if (pythonIndicators.some(indicator => indicator.test(cleanedCode))) {
+    return 'python';
+  }
+
+  // Then check JavaScript indicators
+  if (jsIndicators.some(indicator => indicator.test(cleanedCode))) {
+    return 'javascript';
+  }
+
+  // Default to JavaScript if no clear indicators
+  return 'javascript';
 };
