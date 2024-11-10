@@ -12,12 +12,7 @@ const testRoutes = require('./routes/testRoutes'); // Import the test routes
 
 const app = express();
 
-app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "https://platoeducation-git-v1bikash-bikashs-projects-a2dc20d4.vercel.app");
-  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE");
-  res.header("Access-Control-Allow-Headers", "Content-Type");
-  next();
-});
+
 app.use(cors());
 app.use(helmet());
 app.use(morgan('combined'));
