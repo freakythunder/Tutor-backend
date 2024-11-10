@@ -64,6 +64,13 @@ exports.executeCode = async (req, res, next) => {
         feedback: feedback,
         executionSuccess: true
       }));
+
+      const chatFeedback = new Chat({
+        userId: userId,
+        userMessage: "Code Feedback", // Use a fixed message for user feedback
+        aiResponse: feedback, // AI generated feedback
+      });
+      await chatFeedback.save();
     } catch (executionError) {
       // If execution fails, send the error message and feedback
       res.json(apiResponse.success({ 
