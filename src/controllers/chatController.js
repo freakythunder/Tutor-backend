@@ -1,28 +1,61 @@
-// src/controllers/chatController.js
-const { GoogleGenerativeAI } = require("@google/generative-ai");
 const Chat = require('../models/chatModels');
-const model = require('../utils/genAIInstance');
+const userGenAIManager = require('../services/userGenAIManager');
 const apiResponse = require('../utils/apiResponse');
 
-// Initialize Google Generative AI
-
-const handleGeminiError = require('../utils/geminiErrorHandler');
-
-// Function to handle chat requests
+// src/controllers/chatController.js
 exports.sendChat = async (req, res, next) => {
   try {
     const { message } = req.body;
-    const userId = req.userId; // This will now be available from the authMiddleware
-    let aiResponse = null;
+    const userId = req.userId;
 
-    try {
-      const result = await model.generateContent(message);
-      aiResponse = result.response.text();
-    } catch (apiError) {
-      console.error('Gemini API Error:', apiError);
-      const errorMessage = handleGeminiError(apiError);
-      return res.json(apiResponse.error(errorMessage));
-    }
+    // Get the user's active GenAI connection
+    const genAIConnection = userGenAIManager.activeConnections.get(userId);
+    const pastConversations = await Chat.find({ userId })
+    .sort({ timestamp: -1 })
+    .limit(5); // Get the last 5 conversations
+
+    
+  // Format the past conversations for the prompt
+    const pastMessages = pastConversations.map(conv => `:User  ${conv.userMessage ||"no user message" }\nAI: ${conv.aiResponse || "No ai response"}`).join('\n');
+
+    
+
+  // Combine past messages with the current user message
+    const prompt = 
+    `
+  content for teacher : 
+follow system instruction for your behaviour.
+refer to past 5 conversations and improve your responses following system instructions.
+
+
+if "done with" the challenge refer to this type of answer
+
+- introduce next topic in breif short.
+- give exapmle to understand (just 1).
+- give a challenge on the topics to be solved.
+
+if "need help" refer to this type of answer
+- refer to past conversations and pick the most recent challenge. also keep track of how many times user asked need help for that challenge.
+- provide hint (no solution) for solution if user asking need help for 1st time, include some code snippets in hint.
+- if user asked need help more than 2 times give solution.
+- encourage user to try the challenge again or you can modify the challenge a bit.
+
+Here are the last 5 conversations: from newewst to oldest.
+${pastMessages}
+    
+
+this is the student prompt :
+User: ${message}
+
+Now generate your answer to the student prompt.
+      `;
+
+        
+
+        // Generate AI response
+        const result = await genAIConnection.chat.sendMessage(prompt);
+    const aiResponse = result.response.text();
+
     
     // Save the chat to MongoDB
     const chat = new Chat({
@@ -30,38 +63,29 @@ exports.sendChat = async (req, res, next) => {
       userMessage: message,
       aiResponse: aiResponse,
     });
-
     await chat.save();
 
-    // Send response back to frontend
-    res.json(apiResponse.success({ 
-      savedMessage: aiResponse,
-    }));
-
+    // Send response ```javascript
+    res.json(apiResponse.success({ aiResponse }, 'Message sent successfully'));
   } catch (error) {
-    console.error('Chat Controller Error:', error);
-    res.json(apiResponse.error(error.message));
+    console.error('Chat error:', error);
+    res.status(500).json(apiResponse.error('Failed to send message', error.message));
   }
 };
 
-// Function to fetch past conversations
-exports.getPastConversations = async (req, res,next) => {
+
+exports.getPastConversations = async (req, res) => {
   try {
     const userId = req.userId;
-
-    const chats = await Chat.find({ userId: userId })
-      .sort({ timestamp: -1 })
-      .limit(5)
-      .select('userMessage aiResponse timestamp');
     
-    // Consistent response format whether chats are found or not
-    res.json(apiResponse.success({ 
-      chats: chats.reverse(),
-      message: chats.length === 0 ? "No past conversations found" : "Conversations retrieved successfully"
-    }));
+    // Fetch past conversations for the user, sorted by timestamp (most recent first)
+    const conversations = await Chat.find({ userId })
+      .sort({ timestamp:1 })
+      .limit(50); // Limit to last 50 conversations
 
+    res.json(apiResponse.success(conversations, 'Past conversations retrieved successfully'));
   } catch (error) {
     console.error('Error fetching past conversations:', error);
-    res.status(500).json(apiResponse.error('Failed to fetch past conversations'));
+    res.status(500).json(apiResponse.error('Failed to retrieve past conversations'));
   }
 };
