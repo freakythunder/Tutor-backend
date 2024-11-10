@@ -12,7 +12,7 @@ const mongoose = require('mongoose');
 const app = express();
 
 const corsOptions = {
-  origin: 'https://platoeducation-git-v1bikash-bikashs-projects-a2dc20d4.vercel.app/',
+  origin: 'https://platoeducation-git-v1bikash-bikashs-projects-a2dc20d4.vercel.app',
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true,
 };
@@ -23,10 +23,10 @@ app.use(morgan('combined'));
 app.use(express.json());
 
 // Routes
-app.use('/api/auth', authRoutes); // Add authentication routes
-app.use('/api/code', codeExecutionRoutes);
-app.use('/api/chat', chatRoutes);
-app.get('/api/database-status', (req, res) => {
+app.use('/auth', authRoutes); // Add authentication routes
+app.use('/code', codeExecutionRoutes);
+app.use('/chat', chatRoutes);
+app.get('/database-status', (req, res) => {
     const dbStatus = {
       connected: mongoose.connection.readyState === 1,
       state: ['disconnected', 'connected', 'connecting', 'disconnecting'][mongoose.connection.readyState]
