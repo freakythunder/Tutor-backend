@@ -7,14 +7,7 @@ const logger = require('./src/utils/logger');
 const connectDB = require('./src/config/database');
 const PORT = process.env.PORT || 5000;
 
-// CORS configuration
-const corsOptions = {
-    origin: 'https://platoeducation-git-v1bikash-bikashs-projects-a2dc20d4.vercel.app', // Replace with your frontend URL
-    methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allowed methods
-    credentials: true, // Allow credentials (cookies, authorization headers, etc.)
-};
-
-app.use(cors(corsOptions)); // Use CORS middleware with options
+app.use(cors()); 
 
 // Connect to MongoDB first
 connectDB()
