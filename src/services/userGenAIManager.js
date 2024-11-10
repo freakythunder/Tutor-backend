@@ -29,7 +29,7 @@ class UserGenAIManager {
         model: genAI.getGenerativeModel({
           model: "gemini-1.5-flash",
           generationConfig: {
-            temperature: 1,
+            temperature: 0.2,
             top_p: 0.95,
             top_k: 40,
             max_output_tokens: 8192,
