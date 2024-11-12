@@ -14,6 +14,8 @@ exports.sendChat = async (req, res, next) => {
     .sort({ timestamp: -1 })
     .limit(5); // Get the last 5 conversations
 
+    console.log("past conversations : ",pastConversations);
+
     
   // Format the past conversations for the prompt
     const pastMessages = pastConversations.map(conv => `:User  ${conv.userMessage ||"no user message" }\nAI: ${conv.aiResponse || "No ai response"}`).join('\n');
@@ -84,7 +86,7 @@ exports.getPastConversations = async (req, res) => {
     const userId = req.userId;
     // Fetch past conversations for the user, sorted by timestamp (most recent first)
     console.log("userId : ", userId);
-    
+
     const conversations = await Chat.find({ userId })
       .sort({ timestamp:-1 })
       .limit(50); // Limit to last 50 conversations
