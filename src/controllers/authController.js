@@ -39,13 +39,15 @@ const apiResponse = require('../utils/apiResponse');
         // Generate token
         const token = jwt.sign({ 
           userId: user._id, 
-          username: user.username 
+          username: user.username,
         }, process.env.JWT_SECRET, { expiresIn: '1h' });
         
         // Fetch past conversations
         const pastConversations = await Chat.find({ userId: user._id })
           .sort({ timestamp: -1 })
           .limit(20);
+
+        
        
         const genAIConnection = userGenAIManager.createUserConnection(
           user._id.toString(), 
