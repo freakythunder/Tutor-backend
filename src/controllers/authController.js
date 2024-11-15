@@ -112,7 +112,7 @@ const apiResponse = require('../utils/apiResponse');
     
         const welcomeChat = new Chat({
           userId: user._id,
-          userMessage:  "Hiii",// Store the welcome message as the user message
+          userMessage:  "",// Store the welcome message as the user message
           aiResponse: welcomeMessage, // No AI response for welcome message
         });
     
