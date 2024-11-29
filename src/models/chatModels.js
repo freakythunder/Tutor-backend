@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 
 const chatSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User ', required: true },
-  userMessage: { type: String, required: true },
+  userMessage: { type: String, default :null },
   aiResponse: { type: String, default: null },
   timestamp: { type: Date, default: Date.now },
 });

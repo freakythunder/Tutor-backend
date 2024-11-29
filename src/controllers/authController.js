@@ -6,28 +6,6 @@ const bcrypt = require('bcryptjs');
 const userGenAIManager = require('../services/userGenAIManager');
 const apiResponse = require('../utils/apiResponse');
 
-exports.register = async (req, res) => {
-  try {
-    const { username, password } = req.body;
-    
-    // Check if user already exists
-    const existingUser = await User.findOne({ username });
-    if (existingUser) {
-      return res.status(400).json(apiResponse.error('Username already exists'));
-    }
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const user = new User({ username, password: hashedPassword });
-    
-    await user.save()
-      .then(() => console.log('User  saved successfully'))
-      .catch(error => console.error('Error saving user:', error));
-    
-    res.status(201).json(apiResponse.success(null, 'User registered successfully'));
-  } catch (error) {
-    console.error('Registration error:', error);
-    res.status(400).json(apiResponse.error('Registration failed', error.message));
-  }
-};
 
     exports.login = async (req, res) => {
       try {
@@ -37,19 +15,16 @@ exports.register = async (req, res) => {
         if (!username || !password) {
           return res.status(400).json(apiResponse.error('Username and password are required'));
         }
-    
+        
+
         const user = await User.findOne({ username });
         
         if (!user) {
-          return res.status(401).json(apiResponse.error('Username invalid'));
+          const newUser  = new User({ username, password });
+          await newUser.save();
         }
+
         
-        // Compare passwords
-        const isMatch = await bcrypt.compare(password, user.password);
-      
-        if (!isMatch) {
-          return res.status(401).json(apiResponse.error('Password does not match'));
-        }
         
         // Check if JWT_SECRET is set
         if (!process.env.JWT_SECRET) {
@@ -64,20 +39,22 @@ exports.register = async (req, res) => {
         // Generate token
         const token = jwt.sign({ 
           userId: user._id, 
-          username: user.username 
+          username: user.username,
         }, process.env.JWT_SECRET, { expiresIn: '1h' });
         
         // Fetch past conversations
         const pastConversations = await Chat.find({ userId: user._id })
           .sort({ timestamp: -1 })
           .limit(20);
-        console.log("past conversations in brief :" +pastConversations);
+
+        
+       
         const genAIConnection = userGenAIManager.createUserConnection(
           user._id.toString(), 
           process.env.GOOGLE_API_KEY,
           []
         );
-    
+
         let welcomeMessage;
     
         if (pastConversations.length > 0) {
@@ -93,12 +70,13 @@ exports.register = async (req, res) => {
             }
           ]).flat();
 
-          console.log("chat history in breif :"+chatHistory);
+          
     
           // Update connection with chat history
           genAIConnection.chat = genAIConnection.model.startChat({ history: chatHistory });
     
-          const prompt = `
+          const prompt = 
+          `
           Follow system instruction while answering and keep chat context in mind. 
           Here are the last 5 conversations with the user:
           ${pastConversations.map(conv => `:User   ${conv.userMessage}\nAI: ${conv.aiResponse}`).join('\n')}
@@ -134,7 +112,7 @@ exports.register = async (req, res) => {
     
         const welcomeChat = new Chat({
           userId: user._id,
-          userMessage:  "Hiii",// Store the welcome message as the user message
+          userMessage:  "",// Store the welcome message as the user message
           aiResponse: welcomeMessage, // No AI response for welcome message
         });
     

@@ -7,12 +7,14 @@ exports.sendChat = async (req, res, next) => {
   try {
     const { message } = req.body;
     const userId = req.userId;
-
+    console.log("userId for send message : ",userId);
     // Get the user's active GenAI connection
     const genAIConnection = userGenAIManager.activeConnections.get(userId);
     const pastConversations = await Chat.find({ userId })
     .sort({ timestamp: -1 })
     .limit(5); // Get the last 5 conversations
+
+    console.log("past conversations : ",pastConversations);
 
     
   // Format the past conversations for the prompt
@@ -21,9 +23,12 @@ exports.sendChat = async (req, res, next) => {
     
 
   // Combine past messages with the current user message
+  
     const prompt = 
-    `
-  content for teacher : 
+`
+
+
+content for teacher : 
 follow system instruction for your behaviour.
 refer to past 5 conversations and improve your responses following system instructions.
 
@@ -48,12 +53,14 @@ this is the student prompt :
 User: ${message}
 
 Now generate your answer to the student prompt.
+
+
       `;
 
         
 
         // Generate AI response
-        const result = await genAIConnection.chat.sendMessage(prompt);
+    const result = await genAIConnection.chat.sendMessage(prompt);
     const aiResponse = result.response.text();
 
     
@@ -77,11 +84,14 @@ Now generate your answer to the student prompt.
 exports.getPastConversations = async (req, res) => {
   try {
     const userId = req.userId;
-    
     // Fetch past conversations for the user, sorted by timestamp (most recent first)
+    console.log("userId : ", userId);
+
     const conversations = await Chat.find({ userId })
-      .sort({ timestamp:1 })
+      .sort({ timestamp:-1 })
       .limit(50); // Limit to last 50 conversations
+
+    
 
     res.json(apiResponse.success(conversations, 'Past conversations retrieved successfully'));
   } catch (error) {
