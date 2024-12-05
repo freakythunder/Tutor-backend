@@ -4,7 +4,6 @@ const Chat = require('../models/chatModels');
 const userGenAIManager = require('../services/userGenAIManager');
 const apiResponse = require('../utils/apiResponse');
 const cacheManager = require('../services/cacheManager');
-const authController = require('./authController');
 
 exports.sendChat = async (req, res, next) => {
   try {
@@ -13,38 +12,46 @@ exports.sendChat = async (req, res, next) => {
 
     console.log("userId for send message:", userId);
 
-    if (message.toLowerCase() === "let's begin") {
-      await handleWelcomeMessage(userId, message, res);
-    } else {
-      await handleUserMessage(userId, message, res);
-    }
+    
+    await handleUserMessage(userId, message, res);
   } catch (error) {
     console.error('Chat error:', error);
     res.status(500).json(apiResponse.error('Failed to send message', error.message));
   }
 };
 
-const handleWelcomeMessage = async (userId, message, res) => {
-  const aiResponse = authController.getWelcomeMessage(userId);
+// const handleWelcomeMessage = async (userId, message, res) => {
+//   const aiResponse = authController.getWelcomeMessage(userId);
 
-  await saveChat(userId, message, aiResponse);
-  cacheManager.updateCache(userId, { userMessage: message, aiResponse : aiResponse });
+//   await saveChat(userId, message, aiResponse);
+//   cacheManager.updateCache(userId, { userMessage: message, aiResponse : aiResponse });
 
-  res.json(apiResponse.success({ aiResponse }, 'Message sent successfully'));
-};
+//   res.json(apiResponse.success({ aiResponse }, 'Message sent successfully'));
+// };
 
 const handleUserMessage = async (userId, message, res) => {
-  const genAIConnection = userGenAIManager.activeConnections.get(userId);
+  //const genAIConnection = userGenAIManager.activeConnections.get(userId);
   let pastConversations = cacheManager.getConversations(userId);
 
   if (!pastConversations.length) {
     pastConversations = await Chat.find({ userId }).sort({ timestamp: -1 }).limit(5);
+    cacheManager.initializeCache(userId.toString(), pastConversations);
   }
+  const genAIConnection = userGenAIManager.createUserConnection(
+    userId.toString(),
+    process.env.GOOGLE_API_KEY,
+    []
+  );
+  const chatHistory = pastConversations.map(conv => ([
+    { role: "user", parts: [{ text: conv.userMessage || "No user message" }] },
+    { role: "model", parts: [{ text: conv.aiResponse || "No AI response" }] }
+  ])).flat();
+  genAIConnection.chat = genAIConnection.model.startChat({ history: chatHistory });
 
   const prompt = generatePrompt(pastConversations, message);
   const result = await genAIConnection.chat.sendMessage(prompt);
   const aiResponse = result.response.text();
-
+  userGenAIManager.closeUserConnection(userId);
   await saveChat(userId, message, aiResponse);
   cacheManager.updateCache(userId, { userMessage: message, aiResponse : aiResponse });
 
@@ -62,18 +69,24 @@ Follow system instruction for your behavior.
 Refer to past 5 conversations and improve your responses following system instructions.
 
 If "done with" the challenge refer to this type of answer:
+- he is a existing user and have been learning from you. 
 - Introduce next topic in brief.
 - Give one example for better understanding.
 - Give a challenge on the topic to solve.
 
 If "need help" refer to this type of answer:
+- he is a existing user and have been learning from you. 
 - Refer to past conversations and pick the most recent challenge. Track how many times the user asked for help on that challenge.
 - Provide a hint (no solution) for the first request, including code snippets in the hint.
 - If the user asks for help more than twice, provide the solution.
 - Encourage the user to try again or modify the challenge slightly.
 
-Here are the last 5 conversations (newest to oldest):
-${pastMessages}
+if " let's begin" refer to this type of answer:
+- it means it is a new user a learning for first time. 
+- Introudce the first sub topic in brief.
+- Give one example for better understanding.
+- Give a challenge on the topic to solve.
+
 
 This is the student prompt:
 User: ${message}
@@ -95,6 +108,8 @@ exports.getPastConversations = async (req, res) => {
     const conversations = await Chat.find({ userId })
       .sort({ timestamp: -1 })
       .limit(50);
+
+    cacheManager.initializeCache(userId.toString(), conversations);
 
     res.json(apiResponse.success(conversations, 'Past conversations retrieved successfully'));
   } catch (error) {
