@@ -9,7 +9,7 @@ const codeExecutionRoutes = require('./routes/codeExecutionRoutes');
 const authRoutes = require('./routes/authRoutes'); // Import the new auth routes
 const mongoose = require('mongoose');
 const testRoutes = require('./routes/testRoutes'); // Import the test routes
-
+const cacheManager = require('./services/cacheManager');
 const app = express();
 
 
@@ -17,7 +17,7 @@ app.use(cors());
 app.use(helmet());
 app.use(morgan('combined'));
 app.use(express.json());
-
+cacheManager.startCacheCleanup();
 // Routes
 app.use('/auth', authRoutes); // Add authentication routes
 app.use('/code', codeExecutionRoutes);
