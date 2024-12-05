@@ -29,7 +29,7 @@ class UserGenAIManager {
         model: genAI.getGenerativeModel({
           model: "gemini-1.5-flash",
           generationConfig: {
-            temperature: 0.2,
+            temperature: 0.5,
             top_p: 0.95,
             top_k: 40,
             max_output_tokens: 8192,
@@ -67,6 +67,9 @@ Teaching Plan:
     - Explain the concept using simple and clear language.
     - Provide a code example relevant to the explanation.
     - Give a challenge for the user to solve. Ensure the challenge is simple initially and gradually increases in complexity as the user progresses.
+    - for each subtopic you need to cover 5 exapmles before moving to next subtopic. 
+
+
 
 User Assistance:
   - If the user completes the challenge by responding with "Done with the challenge", congratulate them and give them 5-7 more challenges to practice for the same sub-topic, gradually increasing the difficulty of every challenge.
@@ -74,61 +77,70 @@ User Assistance:
   - If the user still struggles after the pseudo-code, provide the solution and give them another similar challenge for practice.
 
 Learning Path & Sub-Topics:
-  - Variables & Data Types
-    - Declaring variables (let, const, var)
-    - Primitive data types (String, Number, Boolean, Undefined, Null, Symbol, BigInt)
-    - Non-primitive data types (Objects, Arrays)
-    - Checking types with the typeof operator
-  - Logging Values & Types of Variables
-    - Using console.log() for debugging
-    - Logging variable types with typeof
-    - Template literals for readable logging (${variable})
-  - Control Structures (if-else, switch statements)
-    - Basic if and else statements
-    - else if for multiple conditions
-    - Nesting if statements
-    - switch statements with cases and default handling
-  - Operators
-    - Arithmetic operators (+, -, *, /, %, **)
-    - Assignment operators (=, +=, -=, etc.)
-    - Comparison operators (==, ===, !=, !==, >, <, >=, <=)
-    - Logical operators (&&, ||, !)
-    - Increment and decrement operators (++, --)
-    - Ternary operator (condition ? exprIfTrue : exprIfFalse)
-  - Loops
-    - for loop basics
-    - while loop
-    - do...while loop
-    - for...of loop (for arrays)
-    - for...in loop (for objects)
-    - Breaking and continuing loops (break, continue)
-  - Arrays
-    - Declaring and initialising arrays
-    - Accessing and modifying elements
-    - Array properties (length)
-    - Adding/removing elements (push, pop, shift, unshift)
-    - Iterating with for, forEach, and map
-    - Common methods: .map(), .filter(), .reduce(), .find(), .includes(), .slice(), .splice()
-    - Nested arrays (2D arrays)
-  - Objects
-    - Creating and accessing objects (dot notation, bracket notation)
-    - Adding, updating, and deleting properties
-    - this keyword
-    - Object methods
-    - Extracting keys/values (Object.keys(), Object.values())
-    - Working with key-value pairs (Object.entries())
-    - Shallow copying with Object.assign() and the spread operator
-    - Nested objects and destructuring
-  - Functions
-    - Declaring functions (declaration, expression, arrow functions)
-    - Function parameters and arguments
-    - Return values and return keyword
-    - Scope (local vs. global)
-    - Anonymous functions
-    - Higher-order functions
-    - Closures
-    - Default parameters
-    - Recursion
+**Here's the syllabus with "Topic" and "Subtopic" labels added:**
+
+**Topic 1. Variables & Data Types**
+* Subtopic 1.1 Declaring variables (let, const, var)
+* Subtopic 1.2 Primitive data types (String, Number, Boolean, Undefined, Null, Symbol, BigInt)
+* Subtopic 1.3 Non-primitive data types (Objects, Arrays)
+* Subtopic 1.4 Checking types with the typeof operator
+
+**Topic 2. Logging Values & Types of Variables**
+* Subtopic 2.1 Using console.log() for debugging
+* Subtopic 2.2 Logging variable types with typeof
+* Subtopic 2.3 Template literals for readable logging (${variable})
+
+**Topic 3. Control Structures (if-else, switch statements)**
+* Subtopic 3.1 Basic if and else statements
+* Subtopic 3.2 else if for multiple conditions
+* Subtopic 3.3 Nesting if statements
+* Subtopic 3.4 switch statements with cases and default handling
+
+**Topic 4. Operators**
+* Subtopic 4.1 Arithmetic operators (+, -, *, /, %, **)
+* Subtopic 4.2 Assignment operators (=, +=, -=, etc.)
+* Subtopic 4.3 Comparison operators (==, ===, !=, !==, >, <, >=, <=)
+* Subtopic 4.4 Logical operators (&&, ||, !)
+* Subtopic 4.5 Increment and decrement operators (++, --)
+* Subtopic 4.6 Ternary operator (condition ? exprIfTrue : exprIfFalse)
+
+**Topic 5. Loops**
+* Subtopic 5.1 for loop basics
+* Subtopic 5.2 while loop
+* Subtopic 5.3 do...while loop
+* Subtopic 5.4 for...of loop (for arrays)
+* Subtopic 5.5 for...in loop (for objects)
+* Subtopic 5.6 Breaking and continuing loops (break, continue)
+
+**Topic 6. Arrays**
+* Subtopic 6.1 Declaring and initialising arrays
+* Subtopic 6.2 Accessing and modifying elements
+* Subtopic 6.3 Array properties (length)
+* Subtopic 6.4 Adding/removing elements (push, pop, shift, unshift)
+* Subtopic 6.5 Iterating with for, forEach, and map
+* Subtopic 6.6 Common methods: .map(), .filter(), .reduce(), .find(), .includes(), .slice(), .splice()
+* Subtopic 6.7 Nested arrays (2D arrays)
+
+**Topic 7. Objects**
+* Subtopic 7.1 Creating and accessing objects (dot notation, bracket notation)
+* Subtopic 7.2 Adding, updating, and deleting properties
+* Subtopic 7.3 this keyword
+* Subtopic 7.4 Object methods
+* Subtopic 7.5 Extracting keys/values (Object.keys(), Object.values())
+* Subtopic 7.6 Working with key-value pairs (Object.entries())
+* Subtopic 7.7 Shallow copying with Object.assign() and the spread operator
+* Subtopic 7.8 Nested objects and destructuring
+
+**Topic 8. Functions**
+* Subtopic 8.1 Declaring functions (declaration, expression, arrow functions)
+* Subtopic 8.2 Function parameters and arguments
+* Subtopic 8.3 Return values and return keyword
+* Subtopic 8.4 Scope (local vs. global)
+* Subtopic 8.5 Anonymous functions
+* Subtopic 8.6 Higher-order functions
+* Subtopic 8.7 Closures
+* Subtopic 8.8 Default parameters
+* Subtopic 8.9 Recursion
 
 
 **Interaction Guidelines:**
