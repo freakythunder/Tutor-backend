@@ -4,8 +4,8 @@ const Chat = require('../models/chatModels');
 const userGenAIManager = require('../services/userGenAIManager');
 const apiResponse = require('../utils/apiResponse');
 const cacheManager = require('../services/cacheManager');
-const authController = require('./authController');
-
+const OpenAI = require("openai"); // Import OpenAI
+const openai = new OpenAI(); 
 exports.sendChat = async (req, res, next) => {
   try {
     const { message } = req.body;
@@ -13,38 +13,58 @@ exports.sendChat = async (req, res, next) => {
 
     console.log("userId for send message:", userId);
 
-    if (message.toLowerCase() === "let's begin") {
-      await handleWelcomeMessage(userId, message, res);
-    } else {
-      await handleUserMessage(userId, message, res);
-    }
+    
+    await handleUserMessage(userId, message, res);
   } catch (error) {
     console.error('Chat error:', error);
     res.status(500).json(apiResponse.error('Failed to send message', error.message));
   }
 };
 
-const handleWelcomeMessage = async (userId, message, res) => {
-  const aiResponse = authController.getWelcomeMessage(userId);
+// const handleWelcomeMessage = async (userId, message, res) => {
+//   const aiResponse = authController.getWelcomeMessage(userId);
 
-  await saveChat(userId, message, aiResponse);
-  cacheManager.updateCache(userId, { userMessage: message, aiResponse : aiResponse });
+//   await saveChat(userId, message, aiResponse);
+//   cacheManager.updateCache(userId, { userMessage: message, aiResponse : aiResponse });
 
-  res.json(apiResponse.success({ aiResponse }, 'Message sent successfully'));
-};
+//   res.json(apiResponse.success({ aiResponse }, 'Message sent successfully'));
+// };
 
 const handleUserMessage = async (userId, message, res) => {
-  const genAIConnection = userGenAIManager.activeConnections.get(userId);
+  //const genAIConnection = userGenAIManager.activeConnections.get(userId);
   let pastConversations = cacheManager.getConversations(userId);
 
   if (!pastConversations.length) {
     pastConversations = await Chat.find({ userId }).sort({ timestamp: -1 }).limit(5);
+    cacheManager.initializeCache(userId.toString(), pastConversations);
   }
+ 
+
+  const chatHistory = pastConversations.flatMap(conv => ([
+    { role: "assistant", content: conv.aiResponse || "No AI response" },
+    { role: "user", content: conv.userMessage || "No user message" }
+    
+  ])).flat();
+
+
+  const genAIConnection = userGenAIManager.createUserConnection(
+    userId.toString(),
+    process.env.OPENAI_API_KEY,
+    chatHistory
+  );
+  
+  
 
   const prompt = generatePrompt(pastConversations, message);
-  const result = await genAIConnection.chat.sendMessage(prompt);
-  const aiResponse = result.response.text();
+  genAIConnection.messages.push({ role: "user", content: prompt });
 
+  const result = await openai.chat.completions.create({
+    model: genAIConnection.model,
+    messages: genAIConnection.messages
+  });
+  
+  const aiResponse =result.choices[0].message.content;
+  userGenAIManager.closeUserConnection(userId);
   await saveChat(userId, message, aiResponse);
   cacheManager.updateCache(userId, { userMessage: message, aiResponse : aiResponse });
 
@@ -57,28 +77,44 @@ const generatePrompt = (pastConversations, message) => {
   ).join('\n');
 
   return `
-content for teacher:
-Follow system instruction for your behavior.
-Refer to past 5 conversations and improve your responses following system instructions.
+Refer to chat history and keep track of user’s progress
 
-If "done with" the challenge refer to this type of answer:
-- Introduce next topic in brief.
-- Give one example for better understanding.
-- Give a challenge on the topic to solve.
+Here’s what you should pay a lot of attention to: 
+- Students should feel familiar talking to you and you should use the user's chat history to ensure that.
+- Don't answer in paragraphs, use bullet points.
+- Track the sub-topics you have covered with the user.
+- For every sub-topic, you need to give 5 challenges one at a time (one challenge follows after user solves current one) for student’s practice( with increasing difficulty) before moving on to the next sub-topic. (if you are teaching sub-topic 3.2, move to 3.3 after giving 5 challenges for sub-topic 3.2)
+- For tracking number of challenges for every sub-topic, count only the number of challenges student got right (that is, user responded with “Next”)
 
-If "need help" refer to this type of answer:
-- Refer to past conversations and pick the most recent challenge. Track how many times the user asked for help on that challenge.
-- Provide a hint (no solution) for the first request, including code snippets in the hint.
-- If the user asks for help more than twice, provide the solution.
-- Encourage the user to try again or modify the challenge slightly.
 
-Here are the last 5 conversations (newest to oldest):
-${pastMessages}
+Here’s how you should respond to users for different kinds of input from user (cases mentioned):
+- If user responds with "Next",
+- If 5 challenges are covered for the particular sub-topic, move on to the next sub-topic. If not, give another challenge (until the user has solved 5 challenges).
+
+
+- If user responds with "Help",
+- Refer to chat history and pick the most recent challenge given by you to the user.
+- Track how many times the user asked for help (responded with “Help”) on that challenge 
+    - Analyze the code written by user (which can bee found in User : Need help :[code ] in below student prompt) and give feedback on code in less than 50 words.  
+    - If a user asks for the first time, don’t give the solution but just the hint. Encourage users to try harder in a subtly motivational way.
+    - If the user asks for help more than once, give the solution for the particular challenge and also a similar challenge to practice.
+    
+
+- If user responds with "let's begin",
+- That means, he/she is a new user. So give a short intro about yourself.
+- And start teaching everything from sub-topic 1.1
+
+
+
+
+
 
 This is the student prompt:
 User: ${message}
 
+
 Now generate your answer to the student prompt.
+
   `;
 };
 
@@ -95,6 +131,8 @@ exports.getPastConversations = async (req, res) => {
     const conversations = await Chat.find({ userId })
       .sort({ timestamp: -1 })
       .limit(50);
+
+    cacheManager.initializeCache(userId.toString(), conversations);
 
     res.json(apiResponse.success(conversations, 'Past conversations retrieved successfully'));
   } catch (error) {
