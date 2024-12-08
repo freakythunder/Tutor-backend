@@ -50,7 +50,7 @@ class UserGenAIManager {
         createdAt: Date.now(),
         lastActiveAt: Date.now(),
         chat: [],
-        temperature: 2,
+        
       };
       
   function validateMessages(messages) {
