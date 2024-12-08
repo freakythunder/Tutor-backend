@@ -4,7 +4,8 @@ const Chat = require('../models/chatModels');
 const userGenAIManager = require('../services/userGenAIManager');
 const apiResponse = require('../utils/apiResponse');
 const cacheManager = require('../services/cacheManager');
-
+const OpenAI = require("openai"); // Import OpenAI
+const openai = new OpenAI(); 
 exports.sendChat = async (req, res, next) => {
   try {
     const { message } = req.body;
@@ -37,20 +38,32 @@ const handleUserMessage = async (userId, message, res) => {
     pastConversations = await Chat.find({ userId }).sort({ timestamp: -1 }).limit(5);
     cacheManager.initializeCache(userId.toString(), pastConversations);
   }
+ 
+
+  const chatHistory = pastConversations.flatMap(conv => ([
+    { role: "assistant", content: conv.aiResponse || "No AI response" },
+    { role: "user", content: conv.userMessage || "No user message" }
+    
+  ])).flat();
+
+
   const genAIConnection = userGenAIManager.createUserConnection(
     userId.toString(),
-    process.env.GOOGLE_API_KEY,
-    []
+    process.env.OPENAI_API_KEY,
+    chatHistory
   );
-  const chatHistory = pastConversations.map(conv => ([
-    { role: "user", parts: [{ text: conv.userMessage || "No user message" }] },
-    { role: "model", parts: [{ text: conv.aiResponse || "No AI response" }] }
-  ])).flat();
-  genAIConnection.chat = genAIConnection.model.startChat({ history: chatHistory });
+  
+  
 
   const prompt = generatePrompt(pastConversations, message);
-  const result = await genAIConnection.chat.sendMessage(prompt);
-  const aiResponse = result.response.text();
+  genAIConnection.messages.push({ role: "user", content: prompt });
+
+  const result = await openai.chat.completions.create({
+    model: genAIConnection.model,
+    messages: genAIConnection.messages
+  });
+  
+  const aiResponse =result.choices[0].message.content;
   userGenAIManager.closeUserConnection(userId);
   await saveChat(userId, message, aiResponse);
   cacheManager.updateCache(userId, { userMessage: message, aiResponse : aiResponse });
@@ -64,49 +77,43 @@ const generatePrompt = (pastConversations, message) => {
   ).join('\n');
 
   return `
-you are a teacher for this student.
-Follow system instructions for your behavior.
-Refer to chathistory and improve your responses following system instructions.
-your focus : student should feel familiar ,that he/she has been talking to you , feel that you can access all chat history with them, feel comfortabe , feel your response is not ai generated.
-- include subtopic number (like 2.2 etc) and exapmles covered for that subtopic in a small line at end of response ( so that you can refer to it later)
-- don't answer in paragraphs , use bullet points , examples (use code exapmle not text), describe problem also in bullet points.
-- track which subtopic you have been teaching and how many examples of current subtopic you taught. 
-- for a single subtopic 5 examples need to be covered ( with increasing difficulty) to move to next subtopic. (if in 3.2 move to 3.3 after 5 examples of 3.2 , if at subtopic end for example if 3.5 is last subtopic of topic topic 3 then move to 4.1 )
-- for tracking number of exapmles for current subtopic keep in mind that user can ask need help for a single question multipletimes so in chat history a single question may be repeated 2 to 3 times but they should be counted as 1.
+Refer to chat history and keep track of user’s progress
 
-here is your response guide for student prompt : 
+Here’s what you should pay a lot of attention to: 
+- Students should feel familiar talking to you and you should use the user's chat history to ensure that.
+- Don't answer in paragraphs, use bullet points.
+- Track the sub-topics you have covered with the user.
+- For every sub-topic, you need to give 5 challenges one at a time (one challenge follows after user solves current one) for student’s practice( with increasing difficulty) before moving on to the next sub-topic. (if you are teaching sub-topic 3.2, move to 3.3 after giving 5 challenges for sub-topic 3.2)
+- For tracking number of challenges for every sub-topic, count only the number of challenges student got right (that is, user responded with “Next”)
 
 
-If "done with" the challenge refer to this type of answer: 
-- if for current subtopic 5 example covered then only move to next subtopic.
-- below is your rough response format : 
-- intro/welcome/congrats for either newthing/newuser/solved example of certain difficulty. (keep it short)
-  ( focus on keeping familiarity with the user, the user should feel he is talking to a real coding tutor)
-- give one example (if needed ( include code tooo).)
-- give one challenge to solve ( it can be of new subtopic or current subtopic) decide difficulty level based on analysis from chathistory.
-- include subtopic number (like 2.2 etc.) and exapmles covered for that subtopic in a small line at end of response ( so that you can refer to it later)
+Here’s how you should respond to users for different kinds of input from user (cases mentioned):
+- If user responds with "Next",
+- If 5 challenges are covered for the particular sub-topic, move on to the next sub-topic. If not, give another challenge (until the user has solved 5 challenges).
 
-If "need help" refer to this type of answer:
-- Refer to chathistory and pick the most recent challenge. Track how many times the user asked for help on that challenge. (- for tracking number of exapmles for current subtopic keep in mind that user can ask need help for a single question multipletimes so in chat history a single question may be repeated 2 to 3 times but they should be counted as 1.
-)
-- intro/welcome/congrats for either newthing/newuser/solved example of certain difficulty. (keep it short)
-  ( focus on keeping familiarity with the user, the user should feel he is talking to a real coding tutor)
-- Provide a hint (no solution) for the first request, including code snippets in the hint.
-- If the user asks for need help more than 2 time give the exact solution.
-- Encourage the user to try again or modify the challenge slightly.
-- include subtopic number (like 2.2 etc. ) and exapmles covered for that subtopic in a small line at end of response ( so that you can refer to it later)
 
-if " let's begin" refer to this type of answer:
-- it means it is a new user, give a short intro .
-- start from subtopic 1.1 in brief.
-- Give one example for better understanding.
-- Give a challenge on the topic to solve.
+- If user responds with "Help",
+- Refer to chat history and pick the most recent challenge given by you to the user.
+- Track how many times the user asked for help (responded with “Help”) on that challenge 
+    - If a user asks for the first time, don’t give the solution but just the hint. Encourage users to try harder in a subtly motivational way.
+    - If the user asks for help more than once, give the solution for the particular challenge and also a similar challenge to practice.
+
+
+- If user responds with "let's begin",
+- That means, he/she is a new user. So give a short intro about yourself.
+- And start teaching everything from sub-topic 1.1
+
+
+
+
 
 
 This is the student prompt:
 User: ${message}
 
+
 Now generate your answer to the student prompt.
+
   `;
 };
 

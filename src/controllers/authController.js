@@ -7,6 +7,7 @@ const bcrypt = require('bcryptjs');
 const userGenAIManager = require('../services/userGenAIManager');
 const apiResponse = require('../utils/apiResponse');
 const cacheManager = require('../services/cacheManager');
+const { response } = require('express');
 
 
 
@@ -26,7 +27,7 @@ exports.login = async (req, res) => {
       
       const initialMessage = "Hey there! I am here to teach you how to code in Javascript so that you can go and build amazing things out there. Are you ready to begin?";
       await saveWelcomeChat(user._id, initialMessage);
-      if (!process.env.JWT_SECRET || !process.env.GOOGLE_API_KEY) {
+      if (!process.env.JWT_SECRET || !process.env.OPENAI_API_KEY) {
         return res.status(500).json(apiResponse.error('Server configuration error'));
       }
   
@@ -38,13 +39,18 @@ exports.login = async (req, res) => {
       );
 
       await user.save();
+      const messageCount = await Chat.countDocuments({ userId: user._id });
+      
+      
+      const responseMessage = messageCount === 1 ? 'User  registered' : 'Login successful';
+      console.log(messageCount , responseMessage);
       res.json(apiResponse.success(
         { token, userId: user._id, username: user.username },
-        'User registered'
+        responseMessage
       ));
     }
     else{
-      if (!process.env.JWT_SECRET || !process.env.GOOGLE_API_KEY) {
+      if (!process.env.JWT_SECRET || !process.env.OPENAI_API_KEY) {
         return res.status(500).json(apiResponse.error('Server configuration error'));
       }
   
@@ -54,9 +60,12 @@ exports.login = async (req, res) => {
         process.env.JWT_SECRET,
         { expiresIn: '1h' }
       );
+      const messageCount = await Chat.countDocuments({ userId: user._id });
+      const responseMessage = messageCount === 1 ? 'User  registered' : 'Login successful';
+      console.log(messageCount , responseMessage);
       res.json(apiResponse.success(
         { token, userId: user._id, username: user.username },
-        'Login successful'
+        responseMessage
       ));
     }
 

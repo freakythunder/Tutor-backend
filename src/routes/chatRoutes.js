@@ -14,6 +14,7 @@ router.get('/test', (req, res) => {
 });
 
 // Send chat route
+console.log("in chat routes");
 router.post('/send', checkApiKey, chatController.sendChat);
 
 // Fetch past conversations route
