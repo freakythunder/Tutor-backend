@@ -7,8 +7,9 @@ const bcrypt = require('bcryptjs');
 const userGenAIManager = require('../services/userGenAIManager');
 const apiResponse = require('../utils/apiResponse');
 const cacheManager = require('../services/cacheManager');
+const { response } = require('express');
 
-let welcomeMessages = {};
+
 
 exports.login = async (req, res) => {
   try {
@@ -23,33 +24,53 @@ exports.login = async (req, res) => {
     let user = await User.findOne({ username });
     if (!user) {
       user = new User({ username, password });
+      
+      const initialMessage = "Hey there! I am here to teach you how to code in Javascript so that you can go and build amazing things out there. Are you ready to begin?";
+      await saveWelcomeChat(user._id, initialMessage);
+      if (!process.env.JWT_SECRET || !process.env.OPENAI_API_KEY) {
+        return res.status(500).json(apiResponse.error('Server configuration error'));
+      }
+  
+      // Generate token
+      const token = jwt.sign(
+        { userId: user._id, username: user.username },
+        process.env.JWT_SECRET,
+        { expiresIn: '1h' }
+      );
+
       await user.save();
+      const messageCount = await Chat.countDocuments({ userId: user._id });
+      
+      
+      const responseMessage = messageCount === 1 ? 'User  registered' : 'Login successful';
+      console.log(messageCount , responseMessage);
+      res.json(apiResponse.success(
+        { token, userId: user._id, username: user.username },
+        responseMessage
+      ));
+    }
+    else{
+      if (!process.env.JWT_SECRET || !process.env.OPENAI_API_KEY) {
+        return res.status(500).json(apiResponse.error('Server configuration error'));
+      }
+  
+      // Generate token
+      const token = jwt.sign(
+        { userId: user._id, username: user.username },
+        process.env.JWT_SECRET,
+        { expiresIn: '1h' }
+      );
+      const messageCount = await Chat.countDocuments({ userId: user._id });
+      const responseMessage = messageCount === 1 ? 'User  registered' : 'Login successful';
+      console.log(messageCount , responseMessage);
+      res.json(apiResponse.success(
+        { token, userId: user._id, username: user.username },
+        responseMessage
+      ));
     }
 
     // Validate server configuration
-    if (!process.env.JWT_SECRET || !process.env.GOOGLE_API_KEY) {
-      return res.status(500).json(apiResponse.error('Server configuration error'));
-    }
-
-    // Generate token
-    const token = jwt.sign(
-      { userId: user._id, username: user.username },
-      process.env.JWT_SECRET,
-      { expiresIn: '1h' }
-    );
-
-    // Save welcome message in the chat database
-    const initialMessage = "Welcome! Your learning journey begins now.";
-    await saveWelcomeChat(user._id, initialMessage);
-
-    res.json(apiResponse.success(
-      { token, userId: user._id, username: user.username },
-      'Login successful'
-    ));
     
-    const welcomeMessage = await generateWelcomeMessage(user);
-    welcomeMessages[user._id] = welcomeMessage;
-
 
   } catch (error) {
     console.error('Login error:', error);
@@ -65,7 +86,7 @@ exports.logout = async (req, res) => {
     userGenAIManager.closeUserConnection(userId);
     cacheManager.clearCache(userId);
 
-    delete welcomeMessages[userId];
+    
     res.json(apiResponse.success(null, 'Logged out successfully'));
   } catch (error) {
     console.error('Logout error:', error);
@@ -73,9 +94,9 @@ exports.logout = async (req, res) => {
   }
 };
 
-exports.getWelcomeMessage = (userId) => {
-  return welcomeMessages[userId] || "Welcome message not found.";
-};
+// exports.getWelcomeMessage = (userId) => {
+//   return welcomeMessages[userId] || "Welcome message not found.";
+// };
 
 const saveWelcomeChat = async (userId, message) => {
   const systemChat = new Chat({
@@ -86,65 +107,65 @@ const saveWelcomeChat = async (userId, message) => {
   await systemChat.save();
 };
 
-const generateWelcomeMessage = async (user) => {
-  const pastConversations = await Chat.find({ userId: user._id })
-    .sort({ timestamp: -1 })
-    .limit(10);
+// const generateWelcomeMessage = async (user) => {
+//   const pastConversations = await Chat.find({ userId: user._id })
+//     .sort({ timestamp: -1 })
+//     .limit(10);
 
-  // Initialize cache with past conversations
-  cacheManager.initializeCache(user._id.toString(), pastConversations);
+//   // Initialize cache with past conversations
+//   cacheManager.initializeCache(user._id.toString(), pastConversations);
 
-  const genAIConnection = userGenAIManager.createUserConnection(
-    user._id.toString(),
-    process.env.GOOGLE_API_KEY,
-    []
-  );
+//   const genAIConnection = userGenAIManager.createUserConnection(
+//     user._id.toString(),
+//     process.env.GOOGLE_API_KEY,
+//     []
+//   );
 
-  if (pastConversations.length > 0) {
-    // Generate welcome message with context from past conversations
-    return await generateMessageWithContext(genAIConnection, pastConversations, user.username);
-  } else {
-    // Generate welcome message for new users
-    return await generateMessageForNewUser(genAIConnection, user.username);
-  }
-};
+//   if (pastConversations.length > 0) {
+//     // Generate welcome message with context from past conversations
+//     return await generateMessageWithContext(genAIConnection, pastConversations, user.username);
+//   } else {
+//     // Generate welcome message for new users
+//     return await generateMessageForNewUser(genAIConnection, user.username);
+//   }
+// };
 
-const generateMessageWithContext = async (genAIConnection, pastConversations, username) => {
-  const chatHistory = pastConversations.map(conv => ([
-    { role: "user", parts: [{ text: conv.userMessage || "No user message" }] },
-    { role: "model", parts: [{ text: conv.aiResponse || "No AI response" }] }
-  ])).flat();
+// const generateMessageWithContext = async (genAIConnection, pastConversations, username) => {
+//   const chatHistory = pastConversations.map(conv => ([
+//     { role: "user", parts: [{ text: conv.userMessage || "No user message" }] },
+//     { role: "model", parts: [{ text: conv.aiResponse || "No AI response" }] }
+//   ])).flat();
 
-  genAIConnection.chat = genAIConnection.model.startChat({ history: chatHistory });
+//   genAIConnection.chat = genAIConnection.model.startChat({ history: chatHistory });
 
-  const prompt = `
-    Follow system instruction while answering and keep chat context in mind.
-    Here are the last 5 conversations with the user:
-    ${pastConversations.map(conv => `User: ${conv.userMessage}\nAI: ${conv.aiResponse}`).join('\n')}
+//   const prompt = `
+//     Follow system instruction while answering and keep chat context in mind.
+//     Here are the last 5 conversations with the user:
+//     ${pastConversations.map(conv => `User: ${conv.userMessage}\nAI: ${conv.aiResponse}`).join('\n')}
     
-    Create a personalized welcome message for the user "${username}".
-    Response format for teacher:
-    - Welcome back message.
-    - Conclude what the user learned in brief (based on syllabus progress).
-    - Give a challenge to recall learnings.
-  `;
+//     Create a personalized welcome message for the user "${username}".
+//     Response format for teacher:
+//     - Welcome back message.
+//     - Conclude what the user learned in brief (based on syllabus progress).
+//     - Give a challenge to recall learnings.
+//   `;
 
-  const response = await genAIConnection.chat.sendMessage(prompt);
-  return response.response.text();
-};
+//   const response = await genAIConnection.chat.sendMessage(prompt);
+//   return response.response.text();
+// };
 
-const generateMessageForNewUser = async (genAIConnection, username) => {
-  const prompt = `
-    Follow system instruction while answering.
-    Response format for teacher:
-    - Welcome message for new user.
-    - Start with the first topic of the syllabus and introduce it briefly.
-    - Give a challenge for the user to solve.
+// const generateMessageForNewUser = async (genAIConnection, username) => {
+//   const prompt = `
+//     Follow system instruction while answering.
+//     Response format for teacher:
+//     - Welcome message for new user.
+//     - Start with the first topic of the syllabus and introduce it briefly.
+//     - Give a challenge for the user to solve.
 
-    Username: "${username}"
-    Student prompt: "Hi, I am a beginner and want to learn JavaScript."
-  `;
+//     Username: "${username}"
+//     Student prompt: "Hi, I am a beginner and want to learn JavaScript."
+//   `;
 
-  const response = await genAIConnection.chat.sendMessage(prompt);
-  return response.response.text();
-};
+//   const response = await genAIConnection.chat.sendMessage(prompt);
+//   return response.response.text();
+// };
