@@ -21,21 +21,14 @@ exports.sendChat = async (req, res, next) => {
   }
 };
 
-// const handleWelcomeMessage = async (userId, message, res) => {
-//   const aiResponse = authController.getWelcomeMessage(userId);
 
-//   await saveChat(userId, message, aiResponse);
-//   cacheManager.updateCache(userId, { userMessage: message, aiResponse : aiResponse });
-
-//   res.json(apiResponse.success({ aiResponse }, 'Message sent successfully'));
-// };
 
 const handleUserMessage = async (userId, message, res) => {
   //const genAIConnection = userGenAIManager.activeConnections.get(userId);
   let pastConversations = cacheManager.getConversations(userId);
 
   if (!pastConversations.length) {
-    pastConversations = await Chat.find({ userId }).sort({ timestamp: -1 }).limit(5);
+    pastConversations = await Chat.find({ userId }).sort({ timestamp: -1 }).limit(10);
     cacheManager.initializeCache(userId.toString(), pastConversations);
   }
  
@@ -54,7 +47,7 @@ const handleUserMessage = async (userId, message, res) => {
   );
   
   
-
+  console.log(chatHistory);
   const prompt = generatePrompt(pastConversations, message);
   genAIConnection.messages.push({ role: "user", content: prompt });
 
@@ -65,8 +58,14 @@ const handleUserMessage = async (userId, message, res) => {
   
   const aiResponse =result.choices[0].message.content;
   userGenAIManager.closeUserConnection(userId);
-  await saveChat(userId, message, aiResponse);
-  cacheManager.updateCache(userId, { userMessage: message, aiResponse : aiResponse });
+
+  const cleanMessage = message.includes("Here is my code:")
+  ? message.split("Here is my code:")[0].trim() // Keep only the part before "Here is my code:"
+  : message.trim(); // Otherwise, save the full message
+  await saveChat(userId, cleanMessage, aiResponse);
+
+  // Update cache with clean message and AI response
+  cacheManager.updateCache(userId, { userMessage: cleanMessage, aiResponse });
 
   res.json(apiResponse.success({ aiResponse }, 'Message sent successfully'));
 };
@@ -79,31 +78,59 @@ const generatePrompt = (pastConversations, message) => {
   return `
 Refer to chat history and keep track of user’s progress
 
-Here’s what you should pay a lot of attention to: 
+
+Here’s what you should pay a lot of attention to:
 - Students should feel familiar talking to you and you should use the user's chat history to ensure that.
 - Don't answer in paragraphs, use bullet points.
 - Track the sub-topics you have covered with the user.
-- For every sub-topic, you need to give 5 examples for student’s practice( with increasing difficulty) before moving on to the next sub-topic. (if you are teaching sub-topic 3.2, move to 3.3 after giving 5 examples for sub-topic 3.2)
-- For tracking number of examples for every sub-topic, count only the number of examples student got right (that is, user responded with “Next”)
+- You should never talk about concepts that are not covered yet strictly. For example, you should never talk about console.log() if you only talked about declaring variables till that point.
+
+
 
 
 Here’s how you should respond to users for different kinds of input from user (cases mentioned):
-- If user responds with "Next",
-- If 5 challenges are covered for the particular sub-topic, move on to the next sub-topic. If not, give another challenge (until the user has solved 5 challenges).
 
 
-- If user responds with "Help",
-- Refer to chat history and pick the most recent challenge given by you to the user.
-- Track how many times the user asked for help (responded with “Help”) on that challenge 
-    - If a user asks for the first time, don’t give the solution but just the hint. Encourage users to try harder in a subtly motivational way.
-    - If the user asks for help more than once, give the solution for the particular challenge and also a similar challenge to practice.
+
+
+-If the user responds that he/she wants one more example, give the user one more example to practice for the same sub-topic.
+-If a user asks for more examples later on, keep increasing the difficulty of questions following.
+
+
+
+
+- If a user responds that he/she doesn't understand that particular sub-topic (only the most recent sub-topic you explained to the user, you can refer to last assistant role message in chat history), explain only that sub-topic simply like you are explaining it to an 6 year old. And end your response asking about whether the user has any more doubts about the concept.
+
+
+
+
+- If a user responds that he/she wants to move on to the next topic, start teaching the user about the next sub-topic (in the same way as described in the system instructions).
+
+
+- If the user responds with “I need a hint for this challenge”, give feedback on the code written by the user (code that you are getting in user’s message) and then explain the approach on how to solve the challenge.
+
+
+
+
+- If the user asked for solution for a particular challenge:
+  - If a user asks for a solution the first time for that particular challenge, don’t give the solution but just the hint. Encourage users to try harder in a subtly motivational way.
+      * Example for a user asking for help:
+            User: "Need help with this challenge!"
+            AI: "No worries! Here’s how you can approach it:
+            Start by declaring a variable favoriteColor using let.
+            Assign it the value "blue".
+            Log out the variable using console.log()    
+  - If the user asks for a solution the second time for the same problem, give the solution for the particular challenge the user is trying to solve and also a similar challenge to practice.
+     AI: Here’s the solution:
+            let favoriteColor = "blue";
+            Now, try creating another variable called hobby and assign it the value "reading".
+
+
 
 
 - If user responds with "let's begin",
 - That means, he/she is a new user. So give a short intro about yourself.
 - And start teaching everything from sub-topic 1.1
-
-
 
 
 
@@ -114,8 +141,9 @@ User: ${message}
 
 Now generate your answer to the student prompt.
 
+
   `;
-};
+}
 
 const saveChat = async (userId, userMessage, aiResponse) => {
   const chat = new Chat({ userId, userMessage, aiResponse });
