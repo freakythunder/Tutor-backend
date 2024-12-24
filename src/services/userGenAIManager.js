@@ -82,8 +82,10 @@ class UserGenAIManager {
 **Topic 1. Variables & Data Types**
 * Subtopic 1.1 Declaring variables (let, const, var)
 * Subtopic 1.2 Data types
-* Subtopic 1.3 Logging variable types with typeof using console.log()
-* Subtopic 1.4 Template literals for readable logging
+* Subtopic 1.3 Logging variable values using console.log()
+* Subtopic 1.4 Logging variable types with typeof using console.log()
+* Subtopic 1.5 Template literals for readable logging
+
 
 
 **Topic 2. Operators**
