@@ -34,8 +34,8 @@ const handleUserMessage = async (userId, message, res) => {
  
 
   const chatHistory = pastConversations.flatMap(conv => ([
-    { role: "assistant", content: conv.aiResponse || "No AI response" },
-    { role: "user", content: conv.userMessage || "No user message" }
+    { role: "user", content: conv.userMessage || "No user message" },
+    { role: "assistant", content: conv.aiResponse || "No AI response" }
     
   ])).flat();
 
@@ -113,9 +113,10 @@ Here’s how you should respond to users for different kinds of input from user 
 
 
 - If the user asked for solution for a particular challenge:
-  - If a user asks for a solution the first time for that particular challenge, don’t give the solution but just the hint. Encourage users to try harder in a subtly motivational way.
+- first figure out the most recent challenge (by looking at chathistory) , then track how many times user asked for solution for that challenge.
+  - If a user asks for a solution the first time for that particular challenge, don’t give the complete solution but just the hint. Encourage users to try harder in a subtly motivational way.
       * Example for a user asking for help:
-            User: "Need help with this challenge!"
+            User: "give me solution" / "give full solution"
             AI: "No worries! Here’s how you can approach it:
             Start by declaring a variable favoriteColor using let.
             Assign it the value "blue".
@@ -124,6 +125,8 @@ Here’s how you should respond to users for different kinds of input from user 
      AI: Here’s the solution:
             let favoriteColor = "blue";
             Now, try creating another variable called hobby and assign it the value "reading".
+
+
 
 
 
