@@ -31,7 +31,7 @@ class CacheManager {
     }
 
     const conversations = cachedData.conversations
-      .slice(0, 9) // Take the newest 10 conversations
+      .slice(0, 15) // Take the newest 10 conversations
       .reverse(); // Reverse the order to make the most recent one last
 
     return conversations;
