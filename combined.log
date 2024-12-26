@@ -812,3 +812,5 @@
 {"level":"info","message":"Initial MongoDB connection established","timestamp":"2024-12-26T06:26:39.660Z"}
 {"level":"info","message":"Server running on port 5000","timestamp":"2024-12-26T06:26:39.665Z"}
 {"level":"info","message":"MongoDB disconnected","timestamp":"2024-12-26T06:32:41.880Z"}
+{"level":"info","message":"Initial MongoDB connection established","timestamp":"2024-12-26T06:33:11.794Z"}
+{"level":"info","message":"Server running on port 5000","timestamp":"2024-12-26T06:33:11.798Z"}

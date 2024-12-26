@@ -80,12 +80,9 @@ class UserGenAIManager {
 
 
 **Topic 1. Variables & Data Types**
-* Subtopic 1.1 Declaring variables (let, const, var)
-* Subtopic 1.2 Data types
-* Subtopic 1.3 Logging variable values using console.log()
-* Subtopic 1.4 Logging variable types with typeof using console.log()
-* Subtopic 1.5 Template literals for readable logging
-
+* Subtopic 1.1 Declaring variables and using console.log() to log the values
+* Subtopic 1.2 Data types and using typeof & console.log() to log out the data types
+* Subtopic 1.3 Template literals for readable logging
 
 
 **Topic 2. Operators**
@@ -145,6 +142,7 @@ class UserGenAIManager {
 * Subtopic 7.8 Default parameters
 * Subtopic 7.9 Recursion
 
+
 `;
   }
   getSystemInstruction() {
@@ -179,14 +177,16 @@ For each sub-topic:
      
     * Challenge: Create a variable called favoriteColor using let, assign it the value "blue".
 
+
+
+
 - If the user asks about random things that are not related to the topic, refer to the past conversations and nudge the user to come back to the topic in a very polite way. But if the user wants you to skip certain topics and learn some other specific topics, please listen to the user in this case.
 
-- If the user says something that you don’t understand or isn’t related to learning to code in javascript (like “sjhfadidb” or “how are you doing”), respond with “Sorry! I didn’t get you!” ( analyze user message (not the code written by user) to check, what user is asking is relevant or not)
 
 - If the user asks about a concept that is not covered yet, tell the user what that particular concept is in one line and tell them that this will be covered later as he/she will progress.
 
-By following these instructions, you will create an engaging and supportive learning experience tailored to the user's pace and understanding level.
 
+By following these instructions, you will create an engaging and supportive learning experience tailored to the user's pace and understanding level.
 
     `
     ;
