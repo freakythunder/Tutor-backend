@@ -60,7 +60,7 @@ const handleUserMessage = async (userId, message, res) => {
 
 
   console.log(chatHistory);
-  const prompt = generatePrompt(pastConversations, message);
+  const prompt = generatePrompt(subtopicId, message);
   genAIConnection.messages.push({ role: "user", content: prompt });
 
   const result = await openai.chat.completions.create({
@@ -82,12 +82,10 @@ const handleUserMessage = async (userId, message, res) => {
   res.json(apiResponse.success({ aiResponse }, 'Message sent successfully'));
 };
 
-const generatePrompt = (pastConversations, message) => {
-  const pastMessages = pastConversations.map(conv =>
-    `User: ${conv.userMessage || "No user message"}\nAI: ${conv.aiResponse || "No AI response"}`
-  ).join('\n');
-
-  return `User: ${message}. Now generate your answer to the user prompt.`;
+const generatePrompt = (subtopicId, message) => {
+  
+  return `User: ${message}. Now generate your answer to the user prompt.
+  this is the subtopic user is currently on : ${subtopicId}`;
 }
 
 const saveChat = async (userId, subtopicId, userMessage, aiResponse) => {
