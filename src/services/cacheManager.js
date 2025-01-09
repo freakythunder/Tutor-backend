@@ -1,3 +1,7 @@
+
+
+const globalContext = require('../utils/globalContext');
+
 class CacheManager {
   constructor() {
     this.conversationCache = new Map();
@@ -6,24 +10,23 @@ class CacheManager {
   }
 
   // Initialize cache for a user with initial conversations
-  initializeCache(userId, conversations) {
+  initializeCache(userId, subtopicId, conversations) {
     const cachedConversations = conversations.slice(0, this.CACHE_LIMIT).map(conv => ({
       userMessage: conv.userMessage,
       aiResponse: conv.aiResponse,
-      timestamp: conv.timestamp || new Date()
+      timestamp: conv.timestamp || new Date(),
+      subtopicId: conv.subtopicId, // Add this new field
     }));
-
-    this.conversationCache.set(userId, {
+  
+    this.conversationCache.set(`${userId}_${subtopicId}`, {
       conversations: cachedConversations,
-      lastUpdated: Date.now()
+      lastUpdated: Date.now(),
     });
-    console.log(`User added to cache: ${userId}. Current cache size: ${this.conversationCache.size}`);
   }
 
   // Get the most recent 10 conversations for a user
-  getConversations(userId) {
-    const cachedData = this.conversationCache.get(userId);
-
+  getConversations(userId, subtopicId) {
+    const cachedData = this.conversationCache.get(`${userId}_${subtopicId}`);
     // Check cache expiry
     if (!cachedData || (Date.now() - cachedData.lastUpdated > this.CACHE_EXPIRY_TIME)) {
       this.clearCache(userId);
@@ -38,8 +41,8 @@ class CacheManager {
   }
 
   // Add a new conversation to the user's cache
-  updateCache(userId, newConversation) {
-    let cachedData = this.conversationCache.get(userId);
+  updateCache(userId, subtopicId, newConversation) {
+    let cachedData = this.conversationCache.get(`${userId}_${subtopicId}`);
 
     if (!cachedData) {
       cachedData = { conversations: [], lastUpdated: Date.now() };

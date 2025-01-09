@@ -7,7 +7,7 @@ const bcrypt = require('bcryptjs');
 const userGenAIManager = require('../services/userGenAIManager');
 const apiResponse = require('../utils/apiResponse');
 const cacheManager = require('../services/cacheManager');
-const { response } = require('express');
+const defaultTopics = require('../models/topicModel');
 
 
 
@@ -23,10 +23,8 @@ exports.login = async (req, res) => {
     // Find or create user
     let user = await User.findOne({ username });
     if (!user) {
-      user = new User({ username, password });
+      user = new User({ username, password, topics: defaultTopics });
       
-      const initialMessage = "Hey there! I am here to teach you how to code in Javascript so that you can go and build amazing things out there. Are you ready to begin?";
-      await saveWelcomeChat(user._id, initialMessage);
       if (!process.env.JWT_SECRET || !process.env.OPENAI_API_KEY) {
         return res.status(500).json(apiResponse.error('Server configuration error'));
       }
@@ -45,7 +43,7 @@ exports.login = async (req, res) => {
       const responseMessage = messageCount === 1 ? 'User  registered' : 'Login successful';
       console.log(messageCount , responseMessage);
       res.json(apiResponse.success(
-        { token, userId: user._id, username: user.username },
+        { token, userId: user._id, username: user.username, topics: user.topics },
         responseMessage
       ));
     }
@@ -64,7 +62,7 @@ exports.login = async (req, res) => {
       const responseMessage = messageCount === 1 ? 'User  registered' : 'Login successful';
       console.log(messageCount , responseMessage);
       res.json(apiResponse.success(
-        { token, userId: user._id, username: user.username },
+        { token, userId: user._id, username: user.username, topics: user.topics },
         responseMessage
       ));
     }
@@ -85,7 +83,8 @@ exports.logout = async (req, res) => {
     // Close user connection and clear cache
     userGenAIManager.closeUserConnection(userId);
     cacheManager.clearCache(userId);
-
+    const { topics } = req.body;
+    await User.findByIdAndUpdate(userId, { topics }, { new: true });
     
     res.json(apiResponse.success(null, 'Logged out successfully'));
   } catch (error) {

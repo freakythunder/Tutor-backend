@@ -1,6 +1,6 @@
 // utils/apiResponse.js
 const success = (data, message = 'Success') => {
-  console.log("Inside apiResponse.success:", data); 
+ 
     return {
       success: true,
       data,
