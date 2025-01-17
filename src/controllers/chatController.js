@@ -21,7 +21,7 @@ exports.sendChat = async (req, res, next) => {
     const { message } = req.body;
     const userId = req.userId;
 
-    console.log("userId for send message:", userId);
+    
 
 
     await handleUserMessage(userId, message, res);
@@ -59,7 +59,7 @@ const handleUserMessage = async (userId, message, res) => {
   );
 
 
-  console.log(chatHistory);
+ 
   const prompt = generatePrompt(subtopicId, message);
   genAIConnection.messages.push({ role: "user", content: prompt });
 
@@ -104,7 +104,7 @@ exports.getPastConversations = async (req, res) => {
 
     
     
-    console.log("subtopicId:", subtopicId);
+    
     globalContext.updateSubtopicId(subtopicId);
     // Check if cacheManager has conversations for the given userId and subtopicId
     const cachedConversations = cacheManager.getConversations(userId, subtopicId);

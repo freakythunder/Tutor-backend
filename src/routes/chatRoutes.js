@@ -13,8 +13,6 @@ router.get('/test', (req, res) => {
     res.json({ message: 'Chat routes are working' });
 });
 
-// Send chat route
-console.log("in chat routes");
 router.post('/send', checkApiKey, chatController.sendChat);
 
 // Fetch past conversations route

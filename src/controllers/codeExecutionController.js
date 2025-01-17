@@ -47,6 +47,5 @@ exports.executeCode = async (req, res, next) => {
   } catch (error) {
     // Handle any other unexpected errors
     console.error('Code Execution Error:', error);
-    res.json(apiResponse.error(error.message));
   }
 };
