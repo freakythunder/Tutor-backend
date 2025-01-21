@@ -16,77 +16,90 @@ const defaultMessages = require('../models/defaultMessages');
 
 
 
-exports.sendChat = async (req, res, next) => {
+
+exports.sendChat = async (req, res) => {
   try {
     const { message } = req.body;
     const userId = req.userId;
 
-    
+    // Set headers for SSE (Server-Sent Events)
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
 
+    let aiResponse = ""; // Buffer to store the full AI response
+    const subtopicId = globalContext.getSubtopicId();
 
-    await handleUserMessage(userId, message, res);
+    // Get past conversations from cache or database
+    const pastConversations = await getPastConversations(userId, subtopicId);
+
+    const chatHistory = pastConversations.flatMap((conv) => [
+      { role: "user", content: conv.userMessage || "No user message" },
+      { role: "assistant", content: conv.aiResponse || "No AI response" },
+    ]);
+
+    const genAIConnection = userGenAIManager.createUserConnection(
+      userId.toString(),
+      process.env.OPENAI_API_KEY,
+      chatHistory
+    );
+
+    const prompt = generatePrompt(subtopicId, message);
+    genAIConnection.messages.push({ role: "user", content: prompt });
+
+    // Call OpenAI API with streaming enabled
+    const response = await openai.chat.completions.create({
+      model: genAIConnection.model,
+      messages: genAIConnection.messages,
+      stream: true,
+    });
+
+    // Handle the stream
+    for await (const chunk of response) {
+      const content = chunk.choices[0]?.delta?.content;
+      if (content) {
+        aiResponse += content; // Buffer the content
+        res.write(`${content}`); // Stream it to the client
+      }
+    }
+
+    // End the stream and save the full response
+    res.write("\n");
+    res.end();
+
+    const cleanMessage = extractMessage(message);
+    await saveChat(userId, subtopicId, cleanMessage, aiResponse);
+
+    cacheManager.updateCache(userId, subtopicId, { userMessage: cleanMessage, aiResponse });
   } catch (error) {
-    console.error('Chat error:', error);
-    res.status(500).json(apiResponse.error('Failed to send message', error.message));
+    console.error("Chat error:", error);
+    res.status(500).json(apiResponse.error("Failed to send message", error.message));
   }
 };
 
-
-
-
-const handleUserMessage = async (userId, message, res) => {
-  //const genAIConnection = userGenAIManager.activeConnections.get(userId);
-  const subtopicId = globalContext.getSubtopicId();
+const getPastConversations = async (userId, subtopicId) => {
   let pastConversations = cacheManager.getConversations(userId, subtopicId);
 
   if (!pastConversations.length) {
-    pastConversations = await Chat.find({ userId, subtopicId }).sort({ timestamp: -1 }).limit(15);
+    pastConversations = await Chat.find({ userId, subtopicId })
+      .sort({ timestamp: -1 })
+      .limit(15);
     cacheManager.initializeCache(userId.toString(), subtopicId, pastConversations);
   }
 
-
-  const chatHistory = pastConversations.flatMap(conv => ([
-    { role: "user", content: conv.userMessage || "No user message" },
-    { role: "assistant", content: conv.aiResponse || "No AI response" }
-
-  ])).flat();
-
-
-  const genAIConnection = userGenAIManager.createUserConnection(
-    userId.toString(),
-    process.env.OPENAI_API_KEY,
-    chatHistory
-  );
-
-
- 
-  const prompt = generatePrompt(subtopicId, message);
-  genAIConnection.messages.push({ role: "user", content: prompt });
-
-  const result = await openai.chat.completions.create({
-    model: genAIConnection.model,
-    messages: genAIConnection.messages
-  });
-
-  const aiResponse = result.choices[0].message.content;
-  userGenAIManager.closeUserConnection(userId);
-
-  const cleanMessage = message.includes("Here is my code:")
-    ? message.split("Here is my code:")[0].trim() // Keep only the part before "Here is my code:"
-    : message.trim(); // Otherwise, save the full message
-  await saveChat(userId,subtopicId, cleanMessage, aiResponse);
-
-  // Update cache with clean message and AI response
-  cacheManager.updateCache(userId, subtopicId, { userMessage: cleanMessage, aiResponse });
-
-  res.json(apiResponse.success({ aiResponse }, 'Message sent successfully'));
+  return pastConversations;
 };
 
 const generatePrompt = (subtopicId, message) => {
-  
   return `User: ${message}. Now generate your answer to the user prompt.
-  this is the subtopic user is currently on : ${subtopicId}`;
-}
+  This is the subtopic user is currently on: ${subtopicId}`;
+};
+
+const extractMessage = (message) => {
+  return message.includes("Here is my code:")
+    ? message.split("Here is my code:")[0].trim()
+    : message.trim();
+};
 
 const saveChat = async (userId, subtopicId, userMessage, aiResponse) => {
   const chat = new Chat({ userId, subtopicId, userMessage, aiResponse });
