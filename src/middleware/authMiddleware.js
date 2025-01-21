@@ -1,21 +1,20 @@
-// src/middleware/authMiddleware.js
-const jwt = require('jsonwebtoken');
+const admin = require('../config/firebaseAdmin');
 const apiResponse = require('../utils/apiResponse');
 
-const authMiddleware = (req, res, next) => {
+const authMiddleware = async (req, res, next) => {
   const token = req.headers['authorization']?.split(' ')[1];
+
   if (!token) {
     return res.status(401).json(apiResponse.error('No token provided'));
   }
 
-  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-    if (err) {
-      return res.status(401).json(apiResponse.error('Failed to authenticate token'));
-    }
-    req.userId = decoded.userId; // Save userId from the token
-    req.username = decoded.username; // Optionally save username as well
+  try {
+    const decodedToken = await admin.auth().verifyIdToken(token);
+    req.userId = decodedToken.uid;
     next();
-  });
+  } catch (error) {
+    return res.status(401).json(apiResponse.error('Invalid token'));
+  }
 };
 
 module.exports = authMiddleware;

@@ -1,77 +1,50 @@
-// File path: src/controllers/authController.js
-
+const admin = require('../config/firebaseAdmin'); // Assuming the path is correct
 const User = require('../models/userModel');
 const Chat = require('../models/chatModels');
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
-const userGenAIManager = require('../services/userGenAIManager');
 const apiResponse = require('../utils/apiResponse');
 const cacheManager = require('../services/cacheManager');
-const { response } = require('express');
-
-
-
+const defaultTopics = require('../models/topicModel');
+const mongoose = require('mongoose');
+const userGenAIManager = require('../services/userGenAIManager');
 exports.login = async (req, res) => {
   try {
-    const { username, password } = req.body;
-
-    // Validate input
-    if (!username || !password) {
-      return res.status(400).json(apiResponse.error('Username and password are required'));
-    }
-
-    // Find or create user
-    let user = await User.findOne({ username });
-    if (!user) {
-      user = new User({ username, password });
-      
-      const initialMessage = "Hey there! I am here to teach you how to code in Javascript so that you can go and build amazing things out there. Are you ready to begin?";
-      await saveWelcomeChat(user._id, initialMessage);
-      if (!process.env.JWT_SECRET || !process.env.OPENAI_API_KEY) {
-        return res.status(500).json(apiResponse.error('Server configuration error'));
-      }
-  
-      // Generate token
-      const token = jwt.sign(
-        { userId: user._id, username: user.username },
-        process.env.JWT_SECRET,
-        { expiresIn: '1h' }
-      );
-
-      await user.save();
-      const messageCount = await Chat.countDocuments({ userId: user._id });
-      
-      
-      const responseMessage = messageCount === 1 ? 'User  registered' : 'Login successful';
-      console.log(messageCount , responseMessage);
-      res.json(apiResponse.success(
-        { token, userId: user._id, username: user.username },
-        responseMessage
-      ));
-    }
-    else{
-      if (!process.env.JWT_SECRET || !process.env.OPENAI_API_KEY) {
-        return res.status(500).json(apiResponse.error('Server configuration error'));
-      }
-  
-      // Generate token
-      const token = jwt.sign(
-        { userId: user._id, username: user.username },
-        process.env.JWT_SECRET,
-        { expiresIn: '1h' }
-      );
-      const messageCount = await Chat.countDocuments({ userId: user._id });
-      const responseMessage = messageCount === 1 ? 'User  registered' : 'Login successful';
-      console.log(messageCount , responseMessage);
-      res.json(apiResponse.success(
-        { token, userId: user._id, username: user.username },
-        responseMessage
-      ));
-    }
-
-    // Validate server configuration
+    // Extract the user data from the request body
+    const {idToken }= req.body;
+    const token = idToken;
     
+    if (!token) {
+      return res.status(400).json(apiResponse.error('Missing required field: token'));
+    }
 
+    // Verify the Firebase ID token
+    const decodedToken = await admin.auth().verifyIdToken(token);
+    
+    const userId = decodedToken.uid;
+    const name = decodedToken.name;
+
+
+ 
+    
+    let user = await User.findOne({ firebaseUserId: userId });
+    if (!user) {
+      // Create a new user if they don't exist
+      user = new User({
+        firebaseUserId: userId, // Use the Firebase user ID
+        username: name, // Use name or email from token
+        topics: defaultTopics,
+      });
+      await user.save();
+    }
+
+    const messageCount = await Chat.countDocuments({ userId: user._id });
+
+    const responseMessage = messageCount === 1 ? 'User registered' : 'Login successful';
+    
+    res.json(apiResponse.success(
+      { userId: user._id, username: user.username, topics: user.topics },
+      responseMessage
+    ));
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json(apiResponse.error('Login failed', error.message));
@@ -80,12 +53,11 @@ exports.login = async (req, res) => {
 
 exports.logout = async (req, res) => {
   try {
-    const userId = req.userId;
-
-    // Close user connection and clear cache
-    userGenAIManager.closeUserConnection(userId);
-    cacheManager.clearCache(userId);
-
+    const firebaseUserId = req.userId;
+    userGenAIManager.closeUserConnection(firebaseUserId);
+    cacheManager.clearCache(firebaseUserId);
+    const { topics } = req.body;
+    await User.findOneAndUpdate({ firebaseUserId }, { topics }, { new: true });
     
     res.json(apiResponse.success(null, 'Logged out successfully'));
   } catch (error) {

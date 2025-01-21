@@ -6,7 +6,7 @@ const authMiddleware = require('../middleware/authMiddleware'); // Import the au
 
 const router = express.Router();
 router.use(authMiddleware); 
-// Define the route for executing Python code
+
 router.post('/execute', codeExecutionController.executeCode);
 
 module.exports = router;

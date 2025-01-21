@@ -3,6 +3,8 @@ const { exec } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const os = require('os');
+const tempDir = os.tmpdir();
 
 exports.execute = async (code, language = 'auto') => {
   // Detect language if not specified
@@ -19,12 +21,12 @@ exports.execute = async (code, language = 'auto') => {
     // Determine file extension and execution command based on language
     switch (language.toLowerCase()) {
       case 'python':
-        tempFilePath = path.join(__dirname, `temp_${uniqueId}.py`);
+        tempFilePath = path.join(tempDir, `temp_${uniqueId}.py`);
         executionCommand = `python ${tempFilePath}`;
         break;
       case 'javascript':
       case 'js':
-        tempFilePath = path.join(__dirname, `temp_${uniqueId}.js`);
+        tempFilePath = path.join(tempDir, `temp_${uniqueId}.js`);
         executionCommand = `node ${tempFilePath}`;
         break;
       default:
@@ -34,6 +36,7 @@ exports.execute = async (code, language = 'auto') => {
     // Write the code to the temporary file
     fs.writeFile(tempFilePath, code, (err) => {
       if (err) {
+        console.error(`Failed to save the ${language} code to a file:`, err.message);
         return reject(new Error(`Failed to save the ${language} code to a file.`));
       }
 

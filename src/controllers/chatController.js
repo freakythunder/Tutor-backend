@@ -5,15 +5,25 @@ const userGenAIManager = require('../services/userGenAIManager');
 const apiResponse = require('../utils/apiResponse');
 const cacheManager = require('../services/cacheManager');
 const OpenAI = require("openai"); // Import OpenAI
-const openai = new OpenAI(); 
+const openai = new OpenAI({
+  defaultRequestTimeout: 60000, // Set timeout to 60 seconds (adjust as needed)
+});
+
+const globalContext = require('../utils/globalContext');
+
+const defaultMessages = require('../models/defaultMessages');
+
+
+
+
 exports.sendChat = async (req, res, next) => {
   try {
     const { message } = req.body;
     const userId = req.userId;
 
-    console.log("userId for send message:", userId);
-
     
+
+
     await handleUserMessage(userId, message, res);
   } catch (error) {
     console.error('Chat error:', error);
@@ -21,29 +31,24 @@ exports.sendChat = async (req, res, next) => {
   }
 };
 
-// const handleWelcomeMessage = async (userId, message, res) => {
-//   const aiResponse = authController.getWelcomeMessage(userId);
 
-//   await saveChat(userId, message, aiResponse);
-//   cacheManager.updateCache(userId, { userMessage: message, aiResponse : aiResponse });
 
-//   res.json(apiResponse.success({ aiResponse }, 'Message sent successfully'));
-// };
 
 const handleUserMessage = async (userId, message, res) => {
   //const genAIConnection = userGenAIManager.activeConnections.get(userId);
-  let pastConversations = cacheManager.getConversations(userId);
+  const subtopicId = globalContext.getSubtopicId();
+  let pastConversations = cacheManager.getConversations(userId, subtopicId);
 
   if (!pastConversations.length) {
-    pastConversations = await Chat.find({ userId }).sort({ timestamp: -1 }).limit(5);
-    cacheManager.initializeCache(userId.toString(), pastConversations);
+    pastConversations = await Chat.find({ userId, subtopicId }).sort({ timestamp: -1 }).limit(15);
+    cacheManager.initializeCache(userId.toString(), subtopicId, pastConversations);
   }
- 
+
 
   const chatHistory = pastConversations.flatMap(conv => ([
-    { role: "assistant", content: conv.aiResponse || "No AI response" },
-    { role: "user", content: conv.userMessage || "No user message" }
-    
+    { role: "user", content: conv.userMessage || "No user message" },
+    { role: "assistant", content: conv.aiResponse || "No AI response" }
+
   ])).flat();
 
 
@@ -52,91 +57,86 @@ const handleUserMessage = async (userId, message, res) => {
     process.env.OPENAI_API_KEY,
     chatHistory
   );
-  
-  
 
-  const prompt = generatePrompt(pastConversations, message);
+
+ 
+  const prompt = generatePrompt(subtopicId, message);
   genAIConnection.messages.push({ role: "user", content: prompt });
 
   const result = await openai.chat.completions.create({
     model: genAIConnection.model,
     messages: genAIConnection.messages
   });
-  
-  const aiResponse =result.choices[0].message.content;
+
+  const aiResponse = result.choices[0].message.content;
   userGenAIManager.closeUserConnection(userId);
-  await saveChat(userId, message, aiResponse);
-  cacheManager.updateCache(userId, { userMessage: message, aiResponse : aiResponse });
+
+  const cleanMessage = message.includes("Here is my code:")
+    ? message.split("Here is my code:")[0].trim() // Keep only the part before "Here is my code:"
+    : message.trim(); // Otherwise, save the full message
+  await saveChat(userId,subtopicId, cleanMessage, aiResponse);
+
+  // Update cache with clean message and AI response
+  cacheManager.updateCache(userId, subtopicId, { userMessage: cleanMessage, aiResponse });
 
   res.json(apiResponse.success({ aiResponse }, 'Message sent successfully'));
 };
 
-const generatePrompt = (pastConversations, message) => {
-  const pastMessages = pastConversations.map(conv => 
-    `User: ${conv.userMessage || "No user message"}\nAI: ${conv.aiResponse || "No AI response"}`
-  ).join('\n');
+const generatePrompt = (subtopicId, message) => {
+  
+  return `User: ${message}. Now generate your answer to the user prompt.
+  this is the subtopic user is currently on : ${subtopicId}`;
+}
 
-  return `
-Refer to chat history and keep track of user’s progress
-
-Here’s what you should pay a lot of attention to: 
-- Students should feel familiar talking to you and you should use the user's chat history to ensure that.
-- Don't answer in paragraphs, use bullet points.
-- Track the sub-topics you have covered with the user.
-- For every sub-topic, you need to give 5 challenges one at a time (one challenge follows after user solves current one) for student’s practice( with increasing difficulty) before moving on to the next sub-topic. (if you are teaching sub-topic 3.2, move to 3.3 after giving 5 challenges for sub-topic 3.2)
-- For tracking number of challenges for every sub-topic, count only the number of challenges student got right (that is, user responded with “Next”)
-
-
-Here’s how you should respond to users for different kinds of input from user (cases mentioned):
-- If user responds with "Next",
-- If 5 challenges are covered for the particular sub-topic, move on to the next sub-topic. If not, give another challenge (until the user has solved 5 challenges).
-
-
-- If user responds with "Help",
-- Refer to chat history and pick the most recent challenge given by you to the user.
-- Track how many times the user asked for help (responded with “Help”) on that challenge 
-    - Analyze the code written by user (which can bee found in User : Need help :[code ] in below student prompt) and give feedback on code in less than 50 words.  
-    - If a user asks for the first time, don’t give the solution but just the hint. Encourage users to try harder in a subtly motivational way.
-    - If the user asks for help more than once, give the solution for the particular challenge and also a similar challenge to practice.
-    
-
-- If user responds with "let's begin",
-- That means, he/she is a new user. So give a short intro about yourself.
-- And start teaching everything from sub-topic 1.1
-
-
-
-
-
-
-This is the student prompt:
-User: ${message}
-
-
-Now generate your answer to the student prompt.
-
-  `;
-};
-
-const saveChat = async (userId, userMessage, aiResponse) => {
-  const chat = new Chat({ userId, userMessage, aiResponse });
+const saveChat = async (userId, subtopicId, userMessage, aiResponse) => {
+  const chat = new Chat({ userId, subtopicId, userMessage, aiResponse });
   await chat.save();
 };
 
+
+
+// ...
+
 exports.getPastConversations = async (req, res) => {
   try {
+    const subtopicId = req.query.subtopicId;
     const userId = req.userId;
-    console.log("userId:", userId);
 
-    const conversations = await Chat.find({ userId })
-      .sort({ timestamp: -1 })
-      .limit(50);
+    
+    
+    
+    globalContext.updateSubtopicId(subtopicId);
+    // Check if cacheManager has conversations for the given userId and subtopicId
+    const cachedConversations = cacheManager.getConversations(userId, subtopicId);
+    if (cachedConversations.length) {
+      // If cache has conversations, return them
+      return res.json(apiResponse.success(cachedConversations, 'Past conversations'));
+    }
 
-    cacheManager.initializeCache(userId.toString(), conversations);
+    // If no conversations found in cache, check database
+    const dbConversations = await Chat.find({ userId, subtopicId });
+    if (dbConversations.length) {
+      // If conversations found in database, return them
+      return res.json(apiResponse.success(dbConversations, 'Past conversations'));
+    }
 
-    res.json(apiResponse.success(conversations, 'Past conversations retrieved successfully'));
+    // If no conversations found in database, use default message
+    const defaultMessage = defaultMessages[subtopicId];
+    if (defaultMessage) {
+      // Save default message to database
+      await saveChat(userId, subtopicId, '', defaultMessage);
+
+      // Initialize cache manager with default message
+      cacheManager.initializeCache(userId, subtopicId, [{ userMessage: '', aiResponse: defaultMessage }]);
+
+      // Return default message
+      return res.json(apiResponse.success([{ userMessage: '', aiResponse: defaultMessage }], 'Past conversations'));
+    }
+
+    // If no default message found, return an error
+    return res.json(apiResponse.error('No conversations found for this subtopic ID'));
   } catch (error) {
-    console.error('Error fetching past conversations:', error);
-    res.status(500).json(apiResponse.error('Failed to retrieve past conversations'));
+    console.error(error);
+    return res.json(apiResponse.error('Error fetching past conversations'));
   }
 };
