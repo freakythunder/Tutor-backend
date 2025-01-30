@@ -6,14 +6,17 @@ const Code = require('../models/codeModel');
 
 exports.executeCode = async (req, res, next) => {
   try {
-    const { code } = req.body;
+    const { code, input, language } = req.body; // Language is required now
     const userId = req.userId;
-    
+
+    if (!language) {
+      return res.status(400).json(apiResponse.error('Language parameter is required'));
+    }
+
     const formattedCode = code.split('\r\n').map(line => line.trim()).filter(line => line).join('\n');
-    // Try to execute the code
+    
     try {
-      const executionResult = await codeExecutionService.execute(code);
-      // If execution is successful, send both output and feedback
+      const executionResult = await codeExecutionService.execute(code, language, input);
       res.json(apiResponse.success({ 
         output: executionResult.output,
         executionSuccess: true
@@ -23,13 +26,12 @@ exports.executeCode = async (req, res, next) => {
         userId,
         code: formattedCode,
         executionResult: executionResult.output,
-        error: null // No error if execution is successful
+        error: null
       });
 
       await newCodeEntry.save(); 
 
     } catch (executionError) {
-      // If execution fails, send the error message and feedback
       res.json(apiResponse.success({ 
         output: executionError.message,
         executionSuccess: false
@@ -37,15 +39,15 @@ exports.executeCode = async (req, res, next) => {
       const newCodeEntry = new Code({
         userId,
         code: formattedCode,
-        executionResult: null, // No output if execution fails
-        error: executionError.message // Store the error message
+        executionResult: null,
+        error: executionError.message
       });
 
       await newCodeEntry.save(); 
     }
 
   } catch (error) {
-    // Handle any other unexpected errors
     console.error('Code Execution Error:', error);
+    res.status(500).json(apiResponse.error('Internal server error'));
   }
 };

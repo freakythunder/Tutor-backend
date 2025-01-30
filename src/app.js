@@ -11,7 +11,7 @@ const mongoose = require('mongoose');
 const testRoutes = require('./routes/testRoutes'); // Import the test routes
 const cacheManager = require('./services/cacheManager');
 const app = express();
-
+const languageRoutes = require('./routes/languageRoutes');
 
 app.use(cors());
 app.use(helmet());
@@ -23,6 +23,7 @@ app.use('/auth', authRoutes); // Add authentication routes
 app.use('/code', codeExecutionRoutes);
 app.use('/chat', chatRoutes);
 app.use('/test', testRoutes); // Access test routes without authentication
+app.use('/language', languageRoutes);
 app.get('/database-status', (req, res) => {
     const dbStatus = {
       connected: mongoose.connection.readyState === 1,
@@ -30,6 +31,7 @@ app.get('/database-status', (req, res) => {
     };
     res.json(dbStatus);
 });
+
 
 // Error handling
 app.use(errorHandler);
