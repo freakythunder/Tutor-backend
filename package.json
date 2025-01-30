@@ -30,7 +30,6 @@
     "openai": "^4.76.0",
     "p-timeout": "^6.1.4",
     "winston": "^3.15.0", 
-    "node-promises": "^6.0.3",
     "process": "^20.5.2"
   },
   "devDependencies": {
