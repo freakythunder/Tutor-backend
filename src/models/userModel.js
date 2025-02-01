@@ -4,9 +4,27 @@ const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema({
   firebaseUserId: { type: String, required: true, unique: true },
-  username: { type: String, required: true, unique: true },
+  username: { type: String, required: true},
   password: { type: String },
-  topics: { type: Array, default: [] }, 
+  topics:{type : [
+    {
+      language: { type: String, required: true },
+      topics: [
+        {
+          id: { type: Number, required: true },
+          name: { type: String, required: true },
+          completed: { type: Boolean, default: false },
+          subtopics: [
+            {
+              id: { type: Number, required: true },
+              name: { type: String, required: true },
+              completed: { type: Boolean, default: false },
+            },
+          ],
+        },
+      ],
+    },
+  ], default :[]}
 });
 
 // Hash password before saving

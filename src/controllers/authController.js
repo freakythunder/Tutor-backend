@@ -7,6 +7,8 @@ const cacheManager = require('../services/cacheManager');
 const defaultTopics = require('../models/topicModel');
 const mongoose = require('mongoose');
 const userGenAIManager = require('../services/userGenAIManager');
+
+
 exports.login = async (req, res) => {
   try {
     // Extract the user data from the request body
@@ -25,22 +27,21 @@ exports.login = async (req, res) => {
 
 
  
-    
+    let responseMessage ='Login Success';
     let user = await User.findOne({ firebaseUserId: userId });
     if (!user) {
       // Create a new user if they don't exist
       user = new User({
         firebaseUserId: userId, // Use the Firebase user ID
         username: name, // Use name or email from token
-        topics: defaultTopics,
+        topics :[],
       });
+      responseMessage = 'User registered';
       await user.save();
     }
-
-    const messageCount = await Chat.countDocuments({ userId: user._id });
-
-    const responseMessage = messageCount === 1 ? 'User registered' : 'Login successful';
     
+
+    console.log("responseMessage",responseMessage);
     res.json(apiResponse.success(
       { userId: user._id, username: user.username, topics: user.topics },
       responseMessage
@@ -56,7 +57,8 @@ exports.logout = async (req, res) => {
     const firebaseUserId = req.userId;
     userGenAIManager.closeUserConnection(firebaseUserId);
     cacheManager.clearCache(firebaseUserId);
-    const { topics } = req.body;
+    const { alltopics } = req.body;
+    const topics = alltopics;
     await User.findOneAndUpdate({ firebaseUserId }, { topics }, { new: true });
     
     res.json(apiResponse.success(null, 'Logged out successfully'));

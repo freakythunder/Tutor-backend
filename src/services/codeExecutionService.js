@@ -1,110 +1,195 @@
-// src/services/codeExecutionService.js
-const { exec } = require('child_process');
+const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const os = require('os');
 const tempDir = os.tmpdir();
 
-exports.execute = async (code, language = 'auto') => {
-  // Detect language if not specified
-  if (language === 'auto') {
-    language = this.detectLanguage(code);
-  }
-
+exports.execute = async (code, language, input = '') => {
   return new Promise((resolve, reject) => {
-    // Generate a unique filename to prevent conflicts
     const uniqueId = crypto.randomBytes(16).toString('hex');
     let tempFilePath;
     let executionCommand;
+    let cleanupFiles = [];
+    let isCompiledLanguage = false;
 
-    // Determine file extension and execution command based on language
     switch (language.toLowerCase()) {
       case 'python':
         tempFilePath = path.join(tempDir, `temp_${uniqueId}.py`);
-        executionCommand = `python ${tempFilePath}`;
+        executionCommand = 'python';
+        cleanupFiles.push(tempFilePath);
         break;
+
       case 'javascript':
       case 'js':
         tempFilePath = path.join(tempDir, `temp_${uniqueId}.js`);
-        executionCommand = `node ${tempFilePath}`;
+        executionCommand = 'node';
+        cleanupFiles.push(tempFilePath);
         break;
+
+      case 'java':
+        isCompiledLanguage = true;
+        const javaDir = path.join(tempDir, `java_${uniqueId}`);
+        fs.mkdirSync(javaDir);
+        tempFilePath = path.join(javaDir, 'Main.java');
+        cleanupFiles.push(javaDir);
+        break;
+
+      case 'cpp':
+      case 'c++':
+        isCompiledLanguage = true;
+        tempFilePath = path.join(tempDir, `temp_${uniqueId}.cpp`);
+        const executablePath = path.join(tempDir, `temp_${uniqueId}_exe`);
+        cleanupFiles.push(tempFilePath, executablePath);
+        break;
+
       default:
         return reject(new Error(`Unsupported language: ${language}`));
     }
 
-    // Write the code to the temporary file
-    fs.writeFile(tempFilePath, code, (err) => {
-      if (err) {
-        console.error(`Failed to save the ${language} code to a file:`, err.message);
-        return reject(new Error(`Failed to save the ${language} code to a file.`));
+    // Write code to file for all languages
+    fs.writeFileSync(tempFilePath, code);
+
+    if (isCompiledLanguage) {
+      switch (language.toLowerCase()) {
+        case 'java':
+          handleJavaExecution(tempFilePath, input, resolve, reject, cleanupFiles);
+          break;
+          
+        case 'cpp':
+        case 'c++':
+          handleCppExecution(tempFilePath, input, resolve, reject, cleanupFiles);
+          break;
       }
+    } else {
+      // Handle interpreted languages
+      const childProcess = spawn(executionCommand, [tempFilePath], { stdio: ['pipe', 'pipe', 'pipe'] });
 
-      // Configure execution with timeout and resource limits
-      const executionOptions = {
-        timeout: 10000, // 10 seconds max execution time
-        maxBuffer: 1024 * 1024, // 1MB max output
-      };
+      let output = '';
+      let errorOutput = '';
 
-      // Run the script
-      exec(executionCommand, executionOptions, (error, stdout, stderr) => {
-        // Always try to delete the temporary file
-        try {
-          fs.unlinkSync(tempFilePath);
-        } catch (cleanupError) {
-          console.error('Failed to delete temporary file:', cleanupError);
+      childProcess.stdout.on('data', (data) => output += data.toString());
+      childProcess.stderr.on('data', (data) => errorOutput += data.toString());
+
+      childProcess.on('close', (code) => {
+        cleanup(cleanupFiles);
+        if (code !== 0) {
+          return reject(new Error(errorOutput || 'Process exited with an error.'));
         }
-
-        if (error) {
-          // Detailed error handling
-          const errorMessage = stderr || error.message;
-          return reject(new Error(`Execution error: ${errorMessage}`));
-        }
-
-        // Return the standard output
-        resolve({ 
-          output: stdout.trim(),
-          language: language.toLowerCase()
-        });
+        resolve({ output: output.trim() });
       });
-    });
+
+      if (input) {
+        childProcess.stdin.write(input + '\n');
+        childProcess.stdin.end();
+      }
+    }
   });
 };
 
-// Language detection method
-exports.detectLanguage = (code) => {
-  // Trim whitespace and remove leading comments
-  const cleanedCode = code.trim().replace(/^\/\/.*\n/gm, '').replace(/^#.*\n/gm, '');
+// Java Execution Handler
+function handleJavaExecution(javaPath, input, resolve, reject, cleanupFiles) {
+  const javaDir = path.dirname(javaPath);
+  let javaCode = fs.readFileSync(javaPath, 'utf-8');
 
-  // Python-specific indicators
-  const pythonIndicators = [
-    /^\s*def\s+\w+\(/,  // Function definition
-    /^\s*class\s+\w+:/,  // Class definition
-    /^\s*import\s+\w+/,  // Import statement
-    /^\s*from\s+\w+\s+import\s+\w+/,  // From import
-    /^\s*print\(/,  // Print function
-  ];
-
-  // JavaScript-specific indicators
-  const jsIndicators = [
-    /^\s*const\s+\w+\s*=/,  // Const declaration
-    /^\s*let\s+\w+\s*=/,    // Let declaration
-    /^\s*var\s+\w+\s*=/,    // Var declaration
-    /^\s*function\s+\w+\(/,  // Function declaration
-    /^\s*console\.log\(/,   // Console log
-    /^\s*=>\s*{/,           // Arrow function
-  ];
-
-  // Check Python indicators first
-  if (pythonIndicators.some(indicator => indicator.test(cleanedCode))) {
-    return 'python';
+  // Extract the public class name using a regex
+  const classNameMatch = javaCode.match(/public\s+class\s+([A-Za-z_][A-Za-z0-9_]*)/);
+  if (!classNameMatch) {
+    cleanup(cleanupFiles);
+    return reject(new Error('No public class found in Java code.'));
   }
 
-  // Then check JavaScript indicators
-  if (jsIndicators.some(indicator => indicator.test(cleanedCode))) {
-    return 'javascript';
-  }
+  const className = classNameMatch[1]; // Extracted class name
+  const newJavaPath = path.join(javaDir, `${className}.java`);
+  
+  // Rename the Java file to match the class name
+  fs.renameSync(javaPath, newJavaPath);
 
-  // Default to JavaScript if no clear indicators
-  return 'javascript';
-};
+  const compileProcess = spawn('javac', [newJavaPath], { cwd: javaDir });
+
+  let compileError = '';
+  compileProcess.stderr.on('data', (data) => compileError += data.toString());
+
+  compileProcess.on('close', (compileCode) => {
+    if (compileCode !== 0) {
+      cleanup(cleanupFiles);
+      return reject(new Error(compileError || 'Java compilation failed'));
+    }
+
+    const executeProcess = spawn('java', ['-cp', javaDir, className], { cwd: javaDir, stdio: ['pipe', 'pipe', 'pipe'] });
+    let output = '';
+    let errorOutput = '';
+
+    executeProcess.stdout.on('data', (data) => output += data.toString());
+    executeProcess.stderr.on('data', (data) => errorOutput += data.toString());
+
+    executeProcess.on('close', (code) => {
+      cleanup(cleanupFiles);
+      if (code !== 0) {
+        reject(new Error(errorOutput || 'Java execution failed'));
+      } else {
+        resolve({ output: output.trim() });
+      }
+    });
+
+    if (input) {
+      executeProcess.stdin.write(input + '\n');
+      executeProcess.stdin.end();
+    }
+  });
+}
+
+
+// C++ Execution Handler
+function handleCppExecution(cppPath, input, resolve, reject, cleanupFiles) {
+  const executablePath = cppPath.replace('.cpp', '_exe');
+  const compileProcess = spawn('g++', [cppPath, '-o', executablePath]);
+
+  let compileError = '';
+  compileProcess.stderr.on('data', (data) => compileError += data.toString());
+
+  compileProcess.on('close', (compileCode) => {
+    if (compileCode !== 0) {
+      cleanup(cleanupFiles);
+      return reject(new Error(compileError || 'C++ compilation failed'));
+    }
+
+    const executeProcess = spawn(executablePath, [], { stdio: ['pipe', 'pipe', 'pipe'] });
+    let output = '';
+    let errorOutput = '';
+
+    executeProcess.stdout.on('data', (data) => output += data.toString());
+    executeProcess.stderr.on('data', (data) => errorOutput += data.toString());
+
+    executeProcess.on('close', (code) => {
+      cleanup(cleanupFiles);
+      if (code !== 0) {
+        reject(new Error(errorOutput || 'C++ execution failed'));
+      } else {
+        resolve({ output: output.trim() });
+      }
+    });
+
+    if (input) {
+      executeProcess.stdin.write(input + '\n');
+      executeProcess.stdin.end();
+    }
+  });
+}
+
+// Cleanup function
+function cleanup(files) {
+  files.forEach(file => {
+    try {
+      if (fs.existsSync(file)) {
+        if (fs.lstatSync(file).isDirectory()) {
+          fs.rmSync(file, { recursive: true, force: true });
+        } else {
+          fs.unlinkSync(file);
+        }
+      }
+    } catch (e) {
+      console.error('Error cleaning up file:', e);
+    }
+  });
+}
