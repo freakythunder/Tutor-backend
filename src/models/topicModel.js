@@ -136,7 +136,7 @@
           "subtopics": [
             {
               "id": 1,
-              "name": "Declaring and initializing variables",
+              "name": "Declaring and initializing variables in C++",
               "completed": false
             },
             {
