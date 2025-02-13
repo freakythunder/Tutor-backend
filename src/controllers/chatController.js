@@ -114,10 +114,11 @@ exports.getPastConversations = async (req, res) => {
   try {
     const subtopicId = req.query.subtopicId;
     const userId = req.userId;
+    const language = req.query.backendlanguage; // assuming language is sent in the query parameter
 
-    
-    
-    
+
+
+
     globalContext.updateSubtopicId(subtopicId);
     // Check if cacheManager has conversations for the given userId and subtopicId
     const cachedConversations = cacheManager.getConversations(userId, subtopicId);
@@ -134,7 +135,12 @@ exports.getPastConversations = async (req, res) => {
     }
 
     // If no conversations found in database, use default message
-    const defaultMessage = defaultMessages[subtopicId];
+
+
+    const defaultMessage = defaultMessages?.[language]?.[subtopicId] || null;
+    
+    console.log("Language:", language);
+    console.log("SubtopicID:", subtopicId);
     if (defaultMessage) {
       // Save default message to database
       await saveChat(userId, subtopicId, '', defaultMessage);
