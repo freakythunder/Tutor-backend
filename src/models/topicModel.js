@@ -19,7 +19,7 @@
           name: "Operators",
           subtopics: [
             { id: 1, name: "Arithmetic operators (+, -, *, /, %, **)", completed: false },
-            { id: 2, name: "Assignment operators (=, +=, -=, etc.)", completed: false },
+            { id: 2, name: "Assignment operators (=, +=, -=, etc.) in Javascript", completed: false },
             { id: 3, name: "Comparison operators (==, ===, !=, !==, >, <, >=, <=)", completed: false },
             { id: 4, name: "Logical operators (&&, ||, !)", completed: false },
             { id: 5, name: "Increment and decrement operators (++, --)", completed: false },
@@ -156,7 +156,7 @@
             },
             {
               "id": 5,
-              "name": "Constants",
+              "name": "Constants in C++",
               "completed": false
             },
             {
