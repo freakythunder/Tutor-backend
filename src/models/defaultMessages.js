@@ -1,7 +1,7 @@
 // defaultMessages.js
 const defaultMessages = {
   "javascript": {
-    'Declaring variables and using console.log() to log the values and use of comments in coding ( both single line and multi line comments) in JS': "Great! Let's dive right in.\n" +
+    'Declaring variables and using console.log() to log the values and use of comments in coding (both single line and multi line comments) in JS': "Great! Let's dive right in.\n" +
       '\n' +
       '### Introduction\n' +
       "I’m here to teach you JavaScript from the ground up! We'll start with the basics and build your skills step by step. By the end of this journey, you’ll be ready to create amazing things with your coding skills!\n" +
