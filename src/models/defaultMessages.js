@@ -1864,7 +1864,7 @@ const defaultMessages = {
     '```\n' +
     '\n' +
     'Go ahead and try out this challenge! Let me know if you have any questions, or when you’re ready to move on to the next topic. You’re doing great!',
-  'Declaring and initializing variables in C++ in C++': "You're doing an excellent job progressing through the basics of C++! Let's move on to the next sub-topic in **Topic 1: Basics of C++**.\n" +
+  'Declaring and initializing variables in C++': "You're doing an excellent job progressing through the basics of C++! Let's move on to the next sub-topic in **Topic 1: Basics of C++**.\n" +
     '\n' +
     '### **Topic 2: Variables, Data Types, and Constants**\n' +
     '#### **Subtopic 2.1: Declaring and initializing variables**\n' +
