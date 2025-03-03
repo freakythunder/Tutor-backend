@@ -522,3 +522,6 @@
 {"level":"info","message":"Initial MongoDB connection established","timestamp":"2025-03-02T15:10:01.183Z"}
 {"level":"info","message":"Server running on port 5000","timestamp":"2025-03-02T15:10:01.193Z"}
 {"level":"info","message":"MongoDB disconnected","timestamp":"2025-03-02T15:55:03.831Z"}
+{"level":"info","message":"Initial MongoDB connection established","timestamp":"2025-03-03T05:29:45.634Z"}
+{"level":"info","message":"Server running on port 5000","timestamp":"2025-03-03T05:29:45.646Z"}
+{"level":"info","message":"MongoDB disconnected","timestamp":"2025-03-03T06:26:59.995Z"}

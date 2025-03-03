@@ -103,8 +103,8 @@ const generatePrompt = (subtopicId, message) => {
 - For each challenge: 
   
   ## [Problem Title]
-  **Source Inspiration:** [Leetcode #123 / GFG Article \"Array Rotation\"]
-  **Problem Statement:** [Clear description]
+  **Source Inspiration:** [Leetcode #123 / GFG Article \"Array Rotation\"] (don't attach any hyperlinks to source)
+  **Problem Statement:** [Clear description] (start from new line)
   **Sample Test Cases:**
   Input: [values]
   Output: [values]
