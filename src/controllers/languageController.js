@@ -29,7 +29,7 @@ exports.getTopicsByLanguage = async (req, res) => {
 
   exports.saveTopicsInUserProfile = async (req, res) => {
     try {
-      
+      console.log("Initial request body:", req.body);
       
       const user = await User.findOne({ firebaseUserId: req.userId });
       if (!user) {
@@ -38,18 +38,18 @@ exports.getTopicsByLanguage = async (req, res) => {
   
       // Extract topics array from request body
       const topics = Array.isArray(req.body) ? req.body : req.body.topics;
-     
+      console.log("Processed topics:", topics);
   
       // Validate topics
       if (!topics || !Array.isArray(topics)) {
-       
+        console.log("Invalid topics structure:", topics);
         return res.status(400).json(apiResponse.error('Invalid topics format'));
       }
   
       // Validate topic structure
       for (const topic of topics) {
         if (!topic.language || !Array.isArray(topic.topics)) {
-         
+          console.log("Invalid topic structure:", topic);
           return res.status(400).json(apiResponse.error('Each topic must have language and topics array'));
         }
       }
@@ -57,7 +57,7 @@ exports.getTopicsByLanguage = async (req, res) => {
       user.topics = topics;
       await user.save();
       
-      
+      console.log('Topics saved successfully:', user.topics);
       return res.json(apiResponse.success(user.topics, 'Topics saved successfully'));
   
     } catch (error) {

@@ -41,7 +41,7 @@ exports.login = async (req, res) => {
     }
     
 
-   
+    console.log("responseMessage",responseMessage);
     res.json(apiResponse.success(
       { userId: user._id, username: user.username, topics: user.topics },
       responseMessage
