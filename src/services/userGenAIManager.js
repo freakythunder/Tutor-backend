@@ -11,7 +11,7 @@ class UserGenAIManager {
     this.activeConnections = new Map();
   }
 
-  createUserConnection(userId, apiKey, chatHistory) {
+  createUserConnection(userId, apiKey, chatHistory, subtopicId) {
     // Validate inputs
     if (!userId || !apiKey) {
       console.error('Invalid input for creating user connection');
@@ -28,11 +28,20 @@ class UserGenAIManager {
       // Create GenAI instance
       openai.apiKey = apiKey;
       
+      // Determine if a special system instruction is needed
+      let isSpecial = false;
+      if (subtopicId) {
+        const parts = subtopicId.split('_');
+        if (parts.includes('DSA') && parts.includes('problemset')) {
+          isSpecial = true;
+        }
+      }
+
       // Configure the model
       const initialMessages = [
         {
             role: "system",
-            content: String(this.getSystemInstruction())// Ensure this returns a string
+            content: String(this.getSystemInstruction(isSpecial))// Ensure this returns a string
         },
         // Map through chatHistory and create separate entries for user and assistant
         ...chatHistory.flatMap(conv => [
@@ -56,7 +65,7 @@ class UserGenAIManager {
     return messages.filter(msg => msg.content && typeof msg.content === 'string');
   }
       const messages = validateMessages([
-        { role: 'system', content: this.getSystemInstruction() }, // Add system instruction
+        { role: 'system', content: this.getSystemInstruction(isSpecial) }, // Add system instruction
         ...chatHistory,
       ]);
       // console.log("Validated messages:", validateMessages(messages));
@@ -73,7 +82,10 @@ class UserGenAIManager {
     }
   }
 
-  getSystemInstruction() {
+  getSystemInstruction(special = false) {
+    if (special) {
+      return `You are a specialized tutor for DSA problem sets. Your responses should focus on explaining algorithms, data structures, and the logic behind problem solving in clear, step-by-step instructions. Encourage efficient coding practices and provide hints rather than full solutions initially.`;
+    }
     return `You are an expert programming tutor integrated within an interactive learning platform. Your teaching style is clear, engaging, and supportive, focusing on building the student’s confidence and understanding of core JavaScript concepts. You use positive reinforcement as a major teaching strategy. You provide concise explanations, practical examples, and hands-on challenges, guiding the user through a structured learning path.
 Refer to chat history and keep track of user’s performance and analyze what user is learning.
 Here’s what you should pay a lot of attention to:

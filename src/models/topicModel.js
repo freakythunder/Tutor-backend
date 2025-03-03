@@ -1245,7 +1245,212 @@
           ]
         }
       ]
-    }];
+    },
+    {
+      id: 5,
+      language: "DSA",
+      topics: [
+        {
+          id: 1,
+          name: "Introduction to DSA",
+          subtopics: [
+            { id: 1, name: "Problem-Solving Methodologies", completed: false },
+            { id: 2, name: "Time Complexity Analysis", completed: false },
+            { id: 3, name: "Space Complexity & Tradeoffs", completed: false },
+            { id: 4, name: "Best/Worst/Average Case Analysis", completed: false },
+            { id: 5, name: "Recursion & Recurrence Relations", completed: false }
+          ],
+          completed: false
+        },
+        {
+          id: 2,
+          name: "Array Techniques",
+          subtopics: [
+            { id: 1, name: "Basic Operations & Traversal", completed: false },
+            { id: 2, name: "Two-Pointer Technique", completed: false },
+            { id: 3, name: "Sliding Window", completed: false },
+            { id: 4, name: "Prefix Sum & Difference Arrays", completed: false },
+            { id: 5, name: "In-Place Array Operations", completed: false }
+          ],
+          completed: false
+        },
+        {
+          id: 3,
+          name: "String Manipulation",
+          subtopics: [
+            { id: 1, name: "Basic String Operations", completed: false },
+            { id: 2, name: "Pattern Matching Algorithms", completed: false },
+            { id: 3, name: "Palindrome Variations", completed: false },
+            { id: 4, name: "Anagram & Frequency-Based Problems", completed: false },
+            { id: 5, name: "String Encoding/Decoding", completed: false }
+          ],
+          completed: false
+        },
+        {
+          id: 4,
+          name: "Linked Lists",
+          subtopics: [
+            { id: 1, name: "Singly Linked List Operations", completed: false },
+            { id: 2, name: "Doubly Linked Lists", completed: false },
+            { id: 3, name: "Fast & Slow Pointer Technique", completed: false },
+            { id: 4, name: "Merge & Split Operations", completed: false },
+            { id: 5, name: "Reverse Operations", completed: false }
+          ],
+          completed: false
+        },
+        {
+          id: 5,
+          name: "Stacks and Queues",
+          subtopics: [
+            { id: 1, name: "Basic Stack Operations", completed: false },
+            { id: 2, name: "Monotonic Stacks", completed: false },
+            { id: 3, name: "Queue Variations", completed: false },
+            { id: 4, name: "BFS & Level-Order Traversal", completed: false }
+          ],
+          completed: false
+        },
+        {
+          id: 6,
+          name: "Recursion and Backtracking",
+          subtopics: [
+            { id: 1, name: "Basic Recursion Patterns", completed: false },
+            { id: 2, name: "Recursive Tree Traversal", completed: false },
+            { id: 3, name: "Subsets and Combinations", completed: false },
+            { id: 4, name: "Permutations", completed: false },
+            { id: 5, name: "N-Queens Problem", completed: false },
+            { id: 6, name: "Sudoku Solver", completed: false },
+            { id: 7, name: "Combinatorial Sum", completed: false },
+            { id: 8, name: "Partitioning Problems", completed: false }
+          ],
+          completed: false
+        },
+        {
+          id: 7,
+          name: "Trees",
+          subtopics: [
+            { id: 1, name: "Binary Tree Traversals", completed: false },
+            { id: 2, name: "BST Operations", completed: false },
+            { id: 3, name: "Tree Height and Depth", completed: false },
+            { id: 4, name: "LCA and Ancestor Problems", completed: false },
+            { id: 5, name: "Serialization/Deserialization", completed: false },
+            { id: 6, name: "Trie Operations", completed: false },
+            { id: 7, name: "Heap/Priority Queue", completed: false },
+            { id: 8, name: "AVL Tree Rotations", completed: false }
+          ],
+          completed: false
+        },
+        {
+          id: 8,
+          name: "Hashing and Hash Tables",
+          subtopics: [
+            { id: 1, name: "Hash Functions", completed: false },
+            { id: 2, name: "Collision Handling", completed: false },
+            { id: 3, name: "Frequency Counting", completed: false },
+            { id: 4, name: "Subarray Sum Problems", completed: false },
+            { id: 5, name: "Design LRU Cache", completed: false },
+            { id: 6, name: "Distributed Hashing", completed: false },
+            { id: 7, name: "Hash-Based Sets", completed: false }
+          ],
+          completed: false
+        },
+        {
+          id: 9,
+          name: "Sorting and Searching Algorithms",
+          subtopics: [
+            { id: 1, name: "Merge Sort", completed: false },
+            { id: 2, name: "Quick Sort", completed: false },
+            { id: 3, name: "Radix Sort", completed: false },
+            { id: 4, name: "Searching in Rotated Arrays", completed: false },
+            { id: 5, name: "Kth Smallest/Largest", completed: false },
+            { id: 6, name: "Interval Searching", completed: false },
+            { id: 7, name: "Exponential Search", completed: false }
+          ],
+          completed: false
+        },
+        {
+          id: 10,
+          name: "Graphs",
+          subtopics: [
+            { id: 1, name: "BFS for Shortest Path", completed: false },
+            { id: 2, name: "DFS for Cycle Detection", completed: false },
+            { id: 3, name: "Topological Sorting", completed: false },
+            { id: 4, name: "Dijkstra’s Algorithm", completed: false },
+            { id: 5, name: "Minimum Spanning Tree", completed: false },
+            { id: 6, name: "Strongly Connected Components", completed: false },
+            { id: 7, name: "Max Flow Problems", completed: false },
+            { id: 8, name: "Bipartite Matching", completed: false }
+          ],
+          completed: false
+        },
+        {
+          id: 11,
+          name: "Greedy Algorithms",
+          subtopics: [
+            { id: 1, name: "Greedy Fundamentals", completed: false },
+            { id: 2, name: "Interval Scheduling", completed: false },
+            { id: 3, name: "Fractional Knapsack", completed: false },
+            { id: 4, name: "Huffman Coding", completed: false },
+            { id: 5, name: "Coin Change (Greedy Approach)", completed: false },
+            { id: 6, name: "Merge Intervals", completed: false },
+            { id: 7, name: "Job Sequencing", completed: false },
+            { id: 8, name: "Minimum Spanning Tree (Prim’s Algorithm)", completed: false }
+          ],
+          completed: false
+        },
+        {
+          id: 12,
+          name: "Dynamic Programming",
+          subtopics: [
+            { id: 1, name: "1D DP Basics", completed: false },
+            { id: 2, name: "Classic 0/1 Knapsack", completed: false },
+            { id: 3, name: "Longest Common Subsequence (LCS)", completed: false },
+            { id: 4, name: "Longest Increasing Subsequence (LIS)", completed: false },
+            { id: 5, name: "Matrix Chain Multiplication", completed: false },
+            { id: 6, name: "Bitmask DP", completed: false },
+            { id: 7, name: "DP on Trees", completed: false },
+            { id: 8, name: "State Optimization (Space Reduction)", completed: false }
+          ],
+          completed: false
+        },
+        {
+          id: 13,
+          name: "Advanced Data Structures",
+          subtopics: [
+            { id: 1, name: "Tries (Prefix Trees)", completed: false },
+            { id: 2, name: "Segment Trees", completed: false },
+            { id: 3, name: "Fenwick Trees (BIT)", completed: false },
+            { id: 4, name: "Disjoint Set Union (DSU)", completed: false },
+            { id: 5, name: "Suffix Automata", completed: false }
+          ],
+          completed: false
+        },
+        {
+          id: 14,
+          name: "Bit Manipulation and Maths",
+          subtopics: [
+            { id: 1, name: "Bitwise Basics", completed: false },
+            { id: 2, name: "Number of Set Bits", completed: false },
+            { id: 3, name: "Combinatorics", completed: false },
+            { id: 4, name: "Modular Arithmetic", completed: false },
+            { id: 5, name: "Prime Number Algorithms", completed: false }
+          ],
+          completed: false
+        },
+        {
+          id: 15,
+          name: "Advanced Problem-Solving Techniques",
+          subtopics: [
+            { id: 1, name: "Sliding Window (Variable Size)", completed: false },
+            { id: 2, name: "Two Pointers", completed: false },
+            { id: 3, name: "Meet-in-the-Middle", completed: false },
+            { id: 4, name: "Mo’s Algorithm", completed: false }
+          ],
+          completed: false
+        }
+      ]
+    }
+    
+  ];
 
 
 

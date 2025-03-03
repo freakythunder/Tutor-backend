@@ -1,5 +1,3 @@
-
-
 const globalContext = require('../utils/globalContext');
 
 class CacheManager {
@@ -7,6 +5,21 @@ class CacheManager {
     this.conversationCache = new Map();
     this.CACHE_LIMIT = 50;
     this.CACHE_EXPIRY_TIME = 24 * 60 * 60 * 1000; // 24 hours
+    // Automatically start periodic cleanup on initialization
+    this.startCacheCleanup();
+  }
+
+  logCacheSummary() {
+    const summary = {};
+    for (const key of this.conversationCache.keys()) {
+      const [userId, subtopicId] = key.split('_',2);
+      if (summary[userId]) {
+        summary[userId].push(subtopicId);
+      } else {
+        summary[userId] = [subtopicId];
+      }
+    }
+    console.log('Cache Summary:', Object.keys(summary).length, 'users:', summary);
   }
 
   // Initialize cache for a user with initial conversations
@@ -22,17 +35,16 @@ class CacheManager {
       conversations: cachedConversations,
       lastUpdated: Date.now(),
     });
+    console.log(`Initialized cache for user "${userId}" with subtopic "${subtopicId}".`);
+    this.logCacheSummary();
   }
 
   // Get the most recent 10 conversations for a user
   getConversations(userId, subtopicId) {
     const cachedData = this.conversationCache.get(`${userId}_${subtopicId}`);
-    // Check cache expiry
-    if (!cachedData || (Date.now() - cachedData.lastUpdated > this.CACHE_EXPIRY_TIME)) {
-      this.clearCache(userId);
+    if (!cachedData) {  // Added check to prevent undefined errors
       return [];
     }
-
     const conversations = cachedData.conversations
       .slice(0, 15) // Take the newest 10 conversations
       .reverse(); // Reverse the order to make the most recent one last
@@ -64,24 +76,33 @@ class CacheManager {
     cachedData.lastUpdated = Date.now();
 
     // Save the updated cache
-    this.conversationCache.set(userId, cachedData);
+    this.conversationCache.set(`${userId}_${subtopicId}`, cachedData);
+    console.log(`Updated cache for user "${userId}" with subtopic "${subtopicId}".`);
+    this.logCacheSummary();
   }
 
   // Clear cache for a specific user
   clearCache(userId) {
-    this.conversationCache.delete(userId);
-    console.log(`User removed from cache: ${userId}. Current cache size: ${this.conversationCache.size}`);
+    // Delete all entries with keys starting with the given userId
+    for (const key of Array.from(this.conversationCache.keys())) {
+      if (key.startsWith(`${userId}_`)) {
+        this.conversationCache.delete(key);
+      }
+    }
+    console.log(`Cleared cache for user "${userId}". Current cache size: ${this.conversationCache.size}`);
+    this.logCacheSummary();
   }
 
   // Clear all expired caches
   clearExpiredCaches() {
     const now = Date.now();
-    for (const [userId, cachedData] of this.conversationCache.entries()) {
+    for (const [key, cachedData] of this.conversationCache.entries()) {
       if (now - cachedData.lastUpdated > this.CACHE_EXPIRY_TIME) {
-        this.conversationCache.delete(userId);
-        console.log(`Cache cleared for expired user: ${userId}. Current cache size: ${this.conversationCache.size}`);
+        this.conversationCache.delete(key);
+        console.log(`Cache cleared for expired key: "${key}". Current cache size: ${this.conversationCache.size}`);
       }
     }
+    this.logCacheSummary();
   }
 
   // Start periodic cache cleanup
