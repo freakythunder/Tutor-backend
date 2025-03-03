@@ -68,11 +68,12 @@ exports.sendChat = async (req, res) => {
     // End the stream and save the full response
     res.write("\n");
     res.end();
-    userGenAIManager.closeUserConnection(userId);
+    
     const cleanMessage = extractMessage(message);
     await saveChat(userId, subtopicId, cleanMessage, aiResponse);
 
     cacheManager.updateCache(userId, subtopicId, { userMessage: cleanMessage, aiResponse });
+    userGenAIManager.closeUserConnection(userId);
   } catch (error) {
     console.error("Chat error:", error);
     res.status(500).json(apiResponse.error("Failed to send message", error.message));
