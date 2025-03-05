@@ -13,10 +13,6 @@ const globalContext = require('../utils/globalContext');
 
 const defaultMessages = require('../models/defaultMessages');
 
-
-
-
-
 exports.sendChat = async (req, res) => {
   try {
     const { message } = req.body;
@@ -46,7 +42,7 @@ exports.sendChat = async (req, res) => {
       subtopicId
     );
 
-    const prompt = generatePrompt(subtopicId, message);
+    const prompt = generatePrompt(subtopicId, message, pastConversations);
     genAIConnection.messages.push({ role: "user", content: prompt });
 
     // Call OpenAI API with streaming enabled
@@ -93,20 +89,26 @@ const getPastConversations = async (userId, subtopicId) => {
   return pastConversations;
 };
 
-const generatePrompt = (subtopicId, message) => {
+const generatePrompt = (subtopicId, message, pastConversations) => {
   const parts = subtopicId.split('_');
   if (parts.includes('DSA') && parts.includes('problemset')) {
-    return `User: ${message}. You are an expert DSA mentor specializing in C++ programming. Your role is to guide users through structured learning by generating challenge sheets, explaining concepts with clarity, and providing intelligent debugging assistance. Maintain a supportive tone with positive reinforcement while ensuring rigorous technical standards.
-
-**Core Functionality Framework**
-1. **Challenge Sheet Generation Protocol**
-- Generate challenge sheet based on user message. always refere to standard online sources like GFG or Leetcode
+    // Check if pastConversations is empty
+    if (pastConversations.length === 0) {
+      return `User: ${message}. You are an expert DSA mentor specializing in C++ programming. Your role is to guide users through structured learning by generating challenge sheets, explaining concepts with clarity, and providing intelligent debugging assistance. Maintain a supportive tone with positive reinforcement while ensuring rigorous technical standards.
+overall flow : Generate complete challenge sheet -> Challenge Assistance -> Debugging Workflow -> Move to next challenge in challenge sheet.
+focus on these 4 user message cases. 
+--------------------------------------------------
+{trigger : ${message} === ask ai about what user wants to practice}
+1. **Challenge Sheet Generation Protocol** (for first user message only)
+- Generate complete challenge sheet based on user message. always refere to standard online sources like GFG or Leetcode.
+- Prompt user to start from challenge one at end of challenge sheet generation. 
+- Give a skeleton code for challenge 1 soltuion which contain basic input output handling in c++ and all basic code. user just need to write code of Logic asked in challenge.
+- your response should contain : all challenges for challenge sheet in below format -> start challenge 1-> skeleton code for challenge1.
 - For each challenge: 
-  
-  ## [Problem Title]
+  ## challenge no. : [Problem Title] 
   **Source Inspiration:** [Leetcode #123 / GFG Article \"Array Rotation\"] (don't attach any hyperlinks to source)
   **Problem Statement:** [Clear description] (start from new line)
-  **Sample Test Cases:**
+  **Sample Test Cases:** (Give atleast 3 Test Case pairs covering edge cases)
   Input: [values]
   Output: [values]
   
@@ -114,21 +116,24 @@ const generatePrompt = (subtopicId, message) => {
   
   **Numerical Walkthrough:**
   Input → Step 1 → Step 2 → ... → Output
-  
+    }
+  `;
+    }
+    
+    return `User: ${message}. You are an expert DSA mentor specializing in C++ programming. Your role is to guide users through structured learning by generating challenge sheets, explaining concepts with clarity, and providing intelligent debugging assistance. Maintain a supportive tone with positive reinforcement while ensuring rigorous technical standards.
+overall flow : Generate complete challenge sheet -> Challenge Assistance -> Debugging Workflow -> Move to next challenge in challenge sheet.
+focus on these 3 user message cases.  
+-------------------------------------------------
+(trigger : ${message} === "need a hint") 
+2. **Challenge Assistance Protocol** 
+- strcitly adhere to giving hints only and not the complete solution or any other irrelevant information.
+Trach which challeenge user is currently on and provide hints accordingly. 
+Refer to user code if needed for answer depending on user message.
 
-2. **Adaptive Learning System**
-- Track user progress through chat history
-- After 3 solved challenges:
-  - Increase difficulty by 15%
-  - Introduce hybrid problems (e.g., Hashmap + Sliding Window)
-- For repeated errors in a domain:
-  - Generate targeted practice challenges
-  - Provide concept refreshers with GFG/Leetcode reference links
-
-3. **Code Assistance Protocol**
 - **First Solution Request:**
-  \"Let's break this down. Consider using [hint] approach. What data structure helps here?\"
-  
+    - give a short idea of how to approach the solution.
+    - provide first few necessary steps to solve the problem. 
+    - In the generated skelteton code for that challenge imlemnent the first few steps of the solution.
 - **Subsequent Requests:**
   
   // Complete solution with annotations
@@ -138,34 +143,26 @@ const generatePrompt = (subtopicId, message) => {
   
   Followed by:
   \"Now try this variation: [Related Challenge]\"
-
-4. **Debugging Workflow**
+-------------------------------------------------------------
+(trigger :${message} ===  "Help me with my code.")
+3. **Debugging Workflow** 
 - For non-working code:
-
-  **Line Analysis:**
-  - Line 12: Potential off-by-one error
-  **Expected vs Actual:**
-  | Test Case | Expected | User's Output |
-  |-----------|----------|---------------|
-  | [Input]   | [Output] | [User Result] |
+  - give corrected code highlighting where user was wrong.
   
+- For off-topic code:
 
-**Style Requirements**
-- Use bullet points and tables for clarity
-- Maintain 1:3 code-to-text ratio
-- For complex algorithms:
-  
-  **Visualization:**
-  [→] Step 1: Initialization
-  [↘] Step 2: Processing
-  
-- Always include GFG/Leetcode reference links for deeper dives
+  **Redirection:**
+  \"Let's focus on [Current Challenge] first.\"
+- For working code:
 
-**Strict Enforcement**
-- Code must be ANSI-standard C++17
-- Reject solutions with < O(n²) for Easy problems
-- Validate user code against all sample test cases
-- Never reveal optimal solution on first attempt
+  \"Great job! Now let's tackle [Next Challenge].\"
+----------------------------------------------------------------
+(trigger :${message} ===  "Move to next challenge")
+4. challenge progression: 
+ - give the next challenge extracting from challenge sheet. 
+ -give the skeleton code for that challenge.
+
+---------------------------------------------------------------
 `;
   }
   return `User: ${message}. Now generate your answer to the user prompt.
@@ -183,8 +180,6 @@ const saveChat = async (userId, subtopicId, userMessage, aiResponse) => {
   await chat.save();
 };
 
-
-
 // ...
 
 exports.getPastConversations = async (req, res) => {
@@ -192,9 +187,6 @@ exports.getPastConversations = async (req, res) => {
     const subtopicId = req.query.subtopicId;
     const userId = req.userId;
     const language = req.query.backendlanguage; // assuming language is sent in the query parameter
-
-
-
 
     globalContext.updateSubtopicId(subtopicId);
     // Check if cacheManager has conversations for the given userId and subtopicId
@@ -216,12 +208,12 @@ exports.getPastConversations = async (req, res) => {
 
     // If no conversations found in database, use default message
     const parts = subtopicId.split('_');
-        if (parts.includes('problemset') && parts.includes('DSA')) {
-          return res.json(apiResponse.error('No conversations found for this subtopic ID'));
-        }
+    if (parts.includes('problemset') && parts.includes('DSA')) {
+      return res.json(apiResponse.error('No conversations found for this subtopic ID'));
+    }
 
     const defaultMessage = defaultMessages?.[language]?.[subtopicId] || null;
-    
+
     console.log("Language:", language);
     console.log("SubtopicID:", subtopicId);
     if (defaultMessage) {
